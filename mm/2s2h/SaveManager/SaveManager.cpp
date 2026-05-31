@@ -1,4 +1,5 @@
 #include "SaveManager.h"
+#include "PR/os_flash.h"
 
 #include <fstream>
 #include <filesystem>
@@ -303,6 +304,9 @@ extern "C" void SaveManager_SysFlashrom_WriteData(u8* saveBuffer, u32 pageNum, u
     }
 
     if (flashSave == FLASH_SAVE_SRAM_HEADER || flashSave == FLASH_SAVE_SRAM_HEADER_BACKUP) {
+        if (pageCount * FLASH_PAGE_SIZE < sizeof(SaveOptions)) {
+            return;
+        }
         SaveOptions saveOptions;
         memcpy(&saveOptions, saveBuffer, sizeof(SaveOptions));
 
