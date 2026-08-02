@@ -52,6 +52,18 @@ if [[ ! "$TWO_SHIP_IOS_BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
     exit 2
 fi
 
+# The embedded ZAPD revision identifies only macOS as an Apple linker target.
+# iOS and tvOS require the same linker settings; apply the narrow adjustment
+# while configuring and restore the checkout when the script exits.
+ZAPD_CMAKE="$ROOT/ZAPDTR/ZAPD/CMakeLists.txt"
+ZAPD_BACKUP=""
+if grep -q 'CMAKE_SYSTEM_NAME STREQUAL "Darwin"' "$ZAPD_CMAKE"; then
+    ZAPD_BACKUP="$(mktemp)"
+    cp "$ZAPD_CMAKE" "$ZAPD_BACKUP"
+    trap 'cp "$ZAPD_BACKUP" "$ZAPD_CMAKE"; rm -f "$ZAPD_BACKUP"' EXIT
+    perl -0pi -e 's/CMAKE_SYSTEM_NAME STREQUAL "Darwin"/CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|tvOS"/g' "$ZAPD_CMAKE"
+fi
+
 set -- cmake -Wno-unused-cli \
     -S "$ROOT" -B "$BUILD_DIR" \
     -GXcode \
