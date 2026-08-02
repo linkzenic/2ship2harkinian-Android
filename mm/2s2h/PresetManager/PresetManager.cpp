@@ -8,6 +8,10 @@
 #include "2s2h/BenGui/Notification.h"
 #include <ship/window/FileDropMgr.h>
 
+#if defined(__TVOS__)
+#include "ios/TwoShipTVOSFileServer.h"
+#endif
+
 std::unordered_map<std::string, std::string> tagMap = {
     { "gEventLog", "Developer Tools" },
     { "gDeveloperTools", "Developer Tools" },
@@ -448,17 +452,39 @@ void PresetManager_Draw() {
     const std::filesystem::path presetsFolderPath = PresetManager_GetPresetsFolderPath();
     ImGui::BeginChild("PresetManager", ImVec2(0, 0));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 0.5f));
+#if defined(__TVOS__)
+    ImGui::TextWrapped("Upload preset JSON files from a phone or computer on the same network, then refresh the list.");
+#else
     ImGui::TextWrapped("Drag and drop a preset file into the window to load it, or drop it into the presets folder and "
                        "refresh the list.");
+#endif
     ImGui::PopStyleColor();
+#if defined(__TVOS__)
+    if (UIWidgets::Button("Upload Presets over Network",
+                          { .size = ImVec2(ImGui::GetContentRegionAvail().x - 42, 0) })) {
+        TwoShipTVOSFileServer_Start();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Starts the Apple TV transfer page. Open the displayed address on another device and use "
+                          "Upload Presets.");
+    }
+#else
     if (UIWidgets::Button("Open Presets Folder", { .size = ImVec2(ImGui::GetContentRegionAvail().x - 42, 0) })) {
         std::string path = "file:///" + std::filesystem::absolute(presetsFolderPath).string();
         SDL_OpenURL(path.c_str());
     }
+#endif
     ImGui::SameLine();
     if (UIWidgets::Button(ICON_FA_REFRESH)) {
         PresetManager_RefreshPresets();
     }
+#if defined(__TVOS__)
+    char transferStatus[512] = {};
+    TwoShipTVOSFileServer_GetStatus(transferStatus, sizeof(transferStatus));
+    ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+    ImGui::TextWrapped("%s", transferStatus);
+    ImGui::PopTextWrapPos();
+#endif
     ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextPadding, ImVec2(20, 0));
     ImGui::SeparatorText("Available Presets");
 

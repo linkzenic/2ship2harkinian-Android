@@ -5,7 +5,9 @@
 #pragma comment(lib, "Shlwapi.lib")
 #endif
 #include "Extract.h"
+#if !defined(__TVOS__)
 #include "portable-file-dialogs.h"
+#endif
 #include <ship/utils/binarytools/BitConverter.h>
 #include "build.h"
 #include <ship/Context.h>
@@ -313,6 +315,10 @@ bool Extractor::GetRomPathFromBox() {
         return false;
     }
     mCurrentRomPath = nameBuffer;
+#elif defined(__TVOS__)
+    // Apple TV has no system file picker. ROM files are uploaded over the
+    // local-network transfer page and discovered by the startup rescan.
+    return false;
 #else
 #ifndef __ANDROID__
     auto selection = pfd::open_file("Select a file", mSearchPath, { "N64 Roms", "*.z64 *.n64 *.v64" }).result();
@@ -473,6 +479,9 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
     FilterRoms(roms, searchMode);
 
     if (roms.empty()) {
+#if defined(__TVOS__)
+        return false;
+#else
         int ret = ShowYesNoBox("No roms found", "No roms found. Look for one?");
 
         switch (ret) {
@@ -488,8 +497,10 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
                 UNREACHABLE;
                 break;
         }
+#endif
     }
 
+#if !defined(__TVOS__)
     if (roms.size() > 1) {
         int ret = ShowYesNoBox("Multiple ROMs Found", "Multiple ROM files were detected. Select one manually?");
         if (ret == IDYES) {
@@ -500,6 +511,7 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
             roms.push_back(mCurrentRomPath);
         }
     }
+#endif
 
     for (const auto& rom : roms) {
         SetRomInfo(rom);
@@ -515,7 +527,11 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
         inFile.close();
         BitConverter::RomToBigEndian(mRomData.get(), mCurRomSize);
 
+#if defined(__TVOS__)
+        int option = (int)ButtonId::YES;
+#else
         int option = ShowRomPickBox(GetRomVerCrc());
+#endif
 
         if (option == (int)ButtonId::YES) {
             if (!ValidateRom(true)) {

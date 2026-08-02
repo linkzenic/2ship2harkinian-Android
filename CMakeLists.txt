@@ -1,6 +1,27 @@
 cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
+    if(PLATFORM STREQUAL "SIMULATORARM64")
+        set(CMAKE_OSX_SYSROOT "iphonesimulator" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    elseif(PLATFORM STREQUAL "SIMULATORARM64_TVOS")
+        set(CMAKE_OSX_SYSROOT "appletvsimulator" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    elseif(PLATFORM STREQUAL "TVOS")
+        set(CMAKE_OSX_SYSROOT "appletvos" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    endif()
+    # Do not embed the build machine's local checkout paths in public binaries.
+    add_compile_options(
+        "-ffile-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-ffile-prefix-map=${CMAKE_BINARY_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_BINARY_DIR}=."
+    )
+else()
+    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+endif()
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
@@ -73,8 +94,18 @@ set(GBI_UCODE F3DEX_GBI_2)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 
-# Enable MPQ and OTR support
-set(INCLUDE_MPQ_SUPPORT ON)
+# Dependencies not supplied by the iOS SDK.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    include(CMake/ios.cmake)
+endif()
+
+# Apple releases use OTR/O2R archives and do not need StormLib's MPQ support.
+# Keeping it disabled also avoids shipping an unused dependency.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(INCLUDE_MPQ_SUPPORT OFF)
+else()
+    set(INCLUDE_MPQ_SUPPORT ON)
+endif()
 
 ################################################################################
 # Set target arch type if empty. Visual studio solution generator provides it.
@@ -159,7 +190,9 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Sub-projects
 ################################################################################
 add_subdirectory(libultraship ${CMAKE_BINARY_DIR}/libultraship)
-target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
+if(INCLUDE_MPQ_SUPPORT)
+    target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND DEFINED ANDROID_VCPKG_ROOT)
     if(ANDROID_ABI STREQUAL "arm64-v8a")
         set(ANDROID_VCPKG_TRIPLET "arm64-android")
@@ -183,6 +216,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND DEFINED ANDROID_VCPKG_ROOT)
 endif()
 add_subdirectory(ZAPDTR/ZAPD ${CMAKE_BINARY_DIR}/ZAPD)
 add_subdirectory(OTRExporter)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    target_link_libraries(OTRExporter PUBLIC
+        tinyxml2::tinyxml2
+        libzip::zip
+    )
+endif()
 add_subdirectory(mm)
 
 set_property(TARGET 2ship PROPERTY APPIMAGE_DESKTOP_FILE_TERMINAL YES)

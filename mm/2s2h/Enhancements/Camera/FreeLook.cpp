@@ -5,6 +5,9 @@
 #ifdef __ANDROID__
 #include "ship/port/mobile/MobileImpl.h"
 #endif
+#if defined(__IOS__) && !defined(__TVOS__)
+#include "ios/TwoShipIOSTouchControls.h"
+#endif
 
 extern "C" {
 #include "macros.h"
@@ -25,6 +28,16 @@ extern bool IsBombchuFocused();
 
 // Static Data Used For Free Camera
 static bool sCanFreeLook = false;
+
+static void GetFreeLookStick(int8_t* x, int8_t* y) {
+    *x = sCamPlayState->state.input[0].cur.right_stick_x;
+    *y = sCamPlayState->state.input[0].cur.right_stick_y;
+#if defined(__IOS__) && !defined(__TVOS__)
+    // Read the active UIKit stick directly so free look is not dependent on
+    // the SDL/game-thread polling cadence.
+    TwoShipIOS_GetCurrentRightStick(x, y);
+#endif
+}
 
 void UpdateFreeLookState(Camera* camera) {
     switch (camera->mode) {
@@ -98,9 +111,12 @@ bool Camera_FreeLook(Camera* camera) {
 
     Camera_ResetActionFuncState(camera, camera->mode);
 
-    f32 yawDiff = -sCamPlayState->state.input[0].cur.right_stick_x * 10.0f *
+    int8_t rightStickX;
+    int8_t rightStickY;
+    GetFreeLookStick(&rightStickX, &rightStickY);
+    f32 yawDiff = -rightStickX * 10.0f *
                   (CVarGetFloat("gEnhancements.Camera.RightStick.CameraSensitivity.X", 1.0f));
-    f32 pitchDiff = sCamPlayState->state.input[0].cur.right_stick_y * 10.0f *
+    f32 pitchDiff = rightStickY * 10.0f *
                     (CVarGetFloat("gEnhancements.Camera.RightStick.CameraSensitivity.Y", 1.0f));
 
 #ifdef __ANDROID__
@@ -151,8 +167,11 @@ bool Camera_FreeLook(Camera* camera) {
 }
 
 bool Camera_CanFreeLook(Camera* camera) {
-    f32 camX = sCamPlayState->state.input[0].cur.right_stick_x * 10.0f;
-    f32 camY = sCamPlayState->state.input[0].cur.right_stick_y * 10.0f;
+    int8_t rightStickX;
+    int8_t rightStickY;
+    GetFreeLookStick(&rightStickX, &rightStickY);
+    f32 camX = rightStickX * 10.0f;
+    f32 camY = rightStickY * 10.0f;
 
 #ifdef __ANDROID__
     if (!sCanFreeLook && Ship::Mobile::IsUsingTouchscreenControls() &&

@@ -18,12 +18,27 @@
 #include "2s2h/Rando/Rando.h"
 #include "build.h"
 #include <algorithm>
+#if defined(__TVOS__)
+#include "ios/TwoShipTVOSFileServer.h"
+#endif
+#if defined(__IOS__)
+#include "ios/TwoShipSaveBridgeSync.h"
+#endif
 #if defined(__ANDROID__)
 #include <jni.h>
 #include <SDL.h>
 #ifndef ANDROID_APP_VERSION_NAME
 #define ANDROID_APP_VERSION_NAME "unknown"
 #endif
+#endif
+#if defined(__IOS__) && !defined(__TVOS__)
+#include "ios/TwoShipIOSTouchControls.h"
+#endif
+
+#if defined(__IOS__) && !defined(__TVOS__)
+static void SetIOSTouchControlsDisabled(bool disabled) {
+    TwoShipIOS_SetTouchControlsEnabled(disabled ? 0 : 1);
+}
 #endif
 
 extern "C" {
@@ -36,13 +51,19 @@ extern SaveContext gSaveContext;
 extern std::unordered_map<s16, const char*> warpPointSceneList;
 extern void Warp();
 
-#if defined(__ANDROID__)
-static void ApplyAndroidMenuScale(float scale) {
+#if defined(__ANDROID__) || defined(__IOS__)
+static void ApplyMenuScale(float scale) {
+#if defined(__TVOS__)
+    scale = std::clamp(scale, 1.0f, 2.0f);
+#elif defined(__IOS__)
+    scale = std::clamp(scale, 0.35f, 1.0f);
+#else
     if (scale < 1.0f) {
         scale = 1.0f;
     } else if (scale > 3.0f) {
         scale = 3.0f;
     }
+#endif
 
     ImGuiStyle& style = ImGui::GetStyle();
     style.FramePadding = ImVec2(4.0f * scale, 6.0f * scale);
@@ -52,7 +73,9 @@ static void ApplyAndroidMenuScale(float scale) {
     style.GrabMinSize = 12.0f * scale;
     ImGui::GetIO().FontGlobalScale = scale;
 }
+#endif
 
+#if defined(__ANDROID__)
 static void SetAndroidTouchControlsDisabled(bool disabled) {
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     jobject activity = (jobject)SDL_AndroidGetActivity();
@@ -375,7 +398,7 @@ void BenMenu::AddSettings() {
     // Add Settings menu
     AddMenuEntry("Settings", "gSettings.Menu.SettingsSidebarSection");
     // General Settings
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     AddSidebarEntry("Settings", "General", 1);
 #else
     AddSidebarEntry("Settings", "General", 2);
@@ -391,7 +414,7 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gSettings.Menu.AndroidScale")
         .Callback([](WidgetInfo& info) {
-            ApplyAndroidMenuScale(CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f));
+            ApplyMenuScale(CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f));
         })
         .Options(FloatSliderOptions()
                      .DefaultValue(1.45f)
@@ -400,19 +423,53 @@ void BenMenu::AddSettings() {
                      .Step(0.05f)
                      .Format("%.2f")
                      .Tooltip("Adjusts the size of the Android menu."));
+#elif defined(__IOS__) && !defined(__TVOS__)
+    AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gSettings.Menu.IOSScale")
+        .Callback([](WidgetInfo& info) {
+            ApplyMenuScale(CVarGetFloat("gSettings.Menu.IOSScale", 0.65f));
+        })
+        .Options(FloatSliderOptions()
+                     .DefaultValue(0.65f)
+                     .Min(0.35f)
+                     .Max(1.0f)
+                     .Step(0.05f)
+                     .Format("%.2f")
+                     .Tooltip("Adjusts the size of the iOS menu."));
+#elif defined(__TVOS__)
+    AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gSettings.Menu.TVOSScale")
+        .Callback([](WidgetInfo& info) {
+            ApplyMenuScale(CVarGetFloat("gSettings.Menu.TVOSScale", 1.5f));
+        })
+        .Options(FloatSliderOptions()
+                     .DefaultValue(1.5f)
+                     .Min(1.0f)
+                     .Max(2.0f)
+                     .Step(0.05f)
+                     .Format("%.2f")
+                     .Tooltip("Adjusts the size of the Apple TV menu."));
 #endif
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     AddWidget(path, "Disable Touch Controls", WIDGET_CVAR_CHECKBOX)
         .CVar("gSettings.TouchControls.Disabled")
         .Callback([](WidgetInfo& info) {
+#if defined(__ANDROID__)
             SetAndroidTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
+#else
+            SetIOSTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
+#endif
         })
-        .Options(CheckboxOptions().Tooltip("Hides the Android touch controls and eye button."));
+        .Options(CheckboxOptions().Tooltip("Hides the on-screen touch controls."));
 #endif
 #if not defined(__SWITCH__) and not defined(__WIIU__)
     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
-        .Options(CheckboxOptions().Tooltip(
+        .Options(CheckboxOptions()
+#if defined(__TVOS__)
+                     .DefaultValue(true)
+#endif
+                     .Tooltip(
             "Allows controller navigation of the 2Ship menu (Settings, Enhancements,...)\nCAUTION: "
             "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
             "items, A to select, B to move up in scope."));
@@ -462,7 +519,7 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Change Data Folder", WIDGET_BUTTON)
         .Callback([](WidgetInfo& info) { OpenAndroidDataFolderChooser(); })
         .Options(ButtonOptions().Tooltip("Choose where Android stores saves, mods, settings, and support files."));
-#else
+#elif !defined(__IOS__)
     AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
         .Callback([](WidgetInfo& info) {
             std::string filesPath = Ship::Context::GetInstance()->GetAppDirectoryPath();
@@ -471,7 +528,47 @@ void BenMenu::AddSettings() {
         .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
 #endif
 
-#if !defined(__ANDROID__)
+#if defined(__IOS__)
+    AddWidget(path, "Save Bridge", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Save Bridge Pairing", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        static char pairingCode[7] = {};
+        ImGui::TextUnformatted("Enter the six-digit code shown in Linkzenic Save Bridge on your Mac.");
+        ImGui::SetNextItemWidth(140.0f);
+        ImGui::InputText("Pairing Code", pairingCode, sizeof(pairingCode), ImGuiInputTextFlags_CharsDecimal);
+        ImGui::SameLine();
+        if (ImGui::Button("Pair with Save Bridge")) TwoShipSaveBridgeSync_Pair(pairingCode);
+    });
+    AddWidget(path, "Sync Saves with Save Bridge", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipSaveBridgeSync_SyncNow(); });
+    AddWidget(path, "Save Bridge Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[384] = {};
+        TwoShipSaveBridgeSync_GetStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+#endif
+
+#if defined(__TVOS__)
+    AddWidget(path, "Apple TV File Transfer", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "File Transfer Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[512] = {};
+        TwoShipTVOSFileServer_GetStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+    AddWidget(path, "Start File Transfer", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipTVOSFileServer_Start(); })
+        .Options(ButtonOptions().Tooltip(
+            "Starts a private web page for uploading save files, legally acquired ROMs, and mods from your home "
+            "network."));
+    AddWidget(path, "Stop File Transfer", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipTVOSFileServer_Stop(); })
+        .Options(ButtonOptions().Tooltip("Stops the local-network upload page."));
+#endif
+
+#if !defined(__ANDROID__) && !defined(__IOS__)
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "about", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
         ImGui::BeginChild("about");
@@ -686,6 +783,16 @@ void BenMenu::AddSettings() {
         .CVar("gWindows.BenInputEditor")
         .WindowName("2S2H Input Editor")
         .Options(ButtonOptions().Tooltip("Enables the separate Bindings Window.").Size(Sizes::Inline));
+#if defined(__TVOS__)
+    AddWidget(path, "Apple Controller Diagnostics", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Native Controller Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[1024] = {};
+        TwoShipTVOS_GetNativeControllerStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+#endif
 
     path.sidebarName = "Overlay";
     path.column = SECTION_COLUMN_1;

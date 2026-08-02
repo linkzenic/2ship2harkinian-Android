@@ -8,6 +8,10 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
+#include <libultraship/bridge/consolevariablebridge.h>
+#include "2s2h/GameInteractor/GameInteractor.h"
+#include "functions.h"
+#include "variables.h"
 
 struct ShipInit {
     static std::unordered_map<std::string, std::vector<std::function<void()>>>& GetAll() {

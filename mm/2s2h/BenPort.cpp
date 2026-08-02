@@ -65,11 +65,56 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/PresetManager/PresetManager.h"
 
+#ifdef __IOS__
+#if !defined(__TVOS__)
+#include "../ios/TwoShipIOSTouchControls.h"
+#endif
+#if defined(__TVOS__)
+#include "../ios/TwoShipTVOSFileServer.h"
+#endif
+#endif
+
 #ifdef __ANDROID__
 extern "C" void Android_SetDataRootPath(const char* path) {
     if (path != nullptr) {
         Ship::Context::SetAndroidDataRootPath(path);
     }
+}
+#endif
+
+#if defined(__TVOS__)
+static void RemoveTVOSRightStickCButtonDefaults() {
+    constexpr const char* migrationCvar = "gSettings.TvOSRemovedRightStickCButtonDefaultsV3";
+    auto config = Ship::Context::GetInstance()->GetConfig();
+    if (config->GetInt(std::string("CVars.") + migrationCvar, 0) != 0) {
+        return;
+    }
+
+    constexpr const char* mappingListCvars[] = {
+        "gSettings.Controllers.Port1.Buttons.CUpButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CDownButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CLeftButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CRightButtonMappingIds",
+    };
+    for (const char* mappingListCvar : mappingListCvars) {
+        const std::string currentMappings = CVarGetString(mappingListCvar, "");
+        std::string retainedMappings;
+        for (const std::string& mappingId : StringHelper::Split(currentMappings, ",")) {
+            if (mappingId.empty()) {
+                continue;
+            }
+            const bool isRightStickAxis =
+                mappingId.find("-SDLA2-") != std::string::npos ||
+                mappingId.find("-SDLA3-") != std::string::npos;
+            if (!isRightStickAxis) {
+                retainedMappings += mappingId + ",";
+            }
+        }
+        config->SetString(std::string("CVars.") + mappingListCvar, retainedMappings);
+    }
+    config->SetInt(std::string("CVars.") + migrationCvar, 1);
+    config->Save();
+    CVarLoad();
 }
 #endif
 
@@ -118,6 +163,9 @@ extern "C" void Android_SetDataRootPath(const char* path) {
 #include <ship/window/gui/resource/FontFactory.h>
 #include "2s2h/Enhancements/Audio/AudioCollection.h"
 #include "BenGui/BenInputEditorWindow.h"
+#if defined(__IOS__) && !defined(__TVOS__)
+#include "ios/TwoShipIOSTouchControls.h"
+#endif
 
 OTRGlobals* OTRGlobals::Instance;
 GameInteractor* GameInteractor::Instance;
@@ -185,6 +233,12 @@ OTRGlobals::OTRGlobals() {
     context->InitGfxDebugger();
     context->InitConfiguration();
     context->InitConsoleVariables();
+#if defined(__TVOS__)
+    RemoveTVOSRightStickCButtonDefaults();
+#endif
+#ifdef __IOS__
+    // Reconcile saves before the file-select screen reads them.
+#endif
     context->InitControlDeck(std::make_shared<LUS::ControlDeck>(
         std::vector<CONTROLLERBUTTONS_T>{ BTN_CUSTOM_MODIFIER1, BTN_CUSTOM_MODIFIER2 }));
 #if (_DEBUG)
@@ -215,6 +269,14 @@ OTRGlobals::OTRGlobals() {
     auto benFast3dWindow =
         std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({ benInputEditorWindow }));
     context->InitWindow(benFast3dWindow);
+#if defined(__IOS__) && !defined(__TVOS__)
+    // SDL initializes its iOS input backend with the window. Attach the virtual
+    // touch controller afterwards so the handle survives and then make it
+    // visible to ControlDeck before the first controller read.
+    TwoShipIOS_PrepareTouchController();
+    context->GetControlDeck()->GetConnectedPhysicalDeviceManager()->RefreshConnectedSDLGamepads();
+    TwoShipIOS_SetTouchControlsEnabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) == 0);
+#endif
 
     // Override LUS defaults
     auto overlay = context->GetInstance()->GetWindow()->GetGui()->GetGameOverlay();
@@ -372,7 +434,16 @@ ImFont* OTRGlobals::CreateFontWithSize(float size, std::string fontPath) {
         initData->Path = fontPath;
         std::shared_ptr<Ship::Font> fontData = std::static_pointer_cast<Ship::Font>(
             Ship::Context::GetInstance()->GetResourceManager()->LoadResource(fontPath, false, initData));
-        font = mImGuiIo->Fonts->AddFontFromMemoryTTF(fontData->Data, fontData->DataSize, size, &config);
+        if (fontData != nullptr) {
+            font = mImGuiIo->Fonts->AddFontFromMemoryTTF(fontData->Data, fontData->DataSize, size, &config);
+        } else {
+            SPDLOG_ERROR("Failed to load font resource: {}. Using the default font.", fontPath);
+            ImFontConfig fontCfg = ImFontConfig();
+            fontCfg.OversampleH = fontCfg.OversampleV = 1;
+            fontCfg.PixelSnapH = true;
+            fontCfg.SizePixels = size;
+            font = mImGuiIo->Fonts->AddFontDefault(&fontCfg);
+        }
     }
     // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
     float iconFontSize = size * 2.0f / 3.0f;
@@ -676,6 +747,10 @@ extern "C" void InitOTR() {
     Ship::WiiU::Init(appShortName);
 #endif
 
+#if defined(__TVOS__)
+    TwoShipTVOSFileServer_Start();
+#endif
+
     // BENTODO: OTRExporter is filling the version file with garbage. Uncomment once fixed.
     // Check2ShipArchiveVersion(Ship::Context::GetPathRelativeToAppBundle("2ship.o2r"));
 
@@ -704,6 +779,18 @@ extern "C" void InitOTR() {
             exit(1);
         }
 
+#if defined(__TVOS__)
+        Extractor extract;
+        while (!extract.Run(Ship::Context::GetAppDirectoryPath(appShortName))) {
+            char transferStatus[512] = {};
+            TwoShipTVOSFileServer_GetStatus(transferStatus, sizeof(transferStatus));
+            std::string instructions =
+                std::string(transferStatus) +
+                "\n\nUpload mm.o2r, mm.otr, or a legally acquired Majora's Mask ROM, then select OK to rescan.";
+            Extractor::ShowErrorBox("Transfer Game Data", instructions.c_str());
+        }
+        extract.CallZapd(installPath, Ship::Context::GetAppDirectoryPath(appShortName));
+#else
         if (Extractor::ShowYesNoBox("No O2R File", "No O2R files found. Generate one now?") == IDYES) {
             Extractor extract;
             if (!extract.Run(Ship::Context::GetAppDirectoryPath(appShortName))) {
@@ -714,6 +801,7 @@ extern "C" void InitOTR() {
         } else {
             exit(1);
         }
+#endif
     }
 #endif
 

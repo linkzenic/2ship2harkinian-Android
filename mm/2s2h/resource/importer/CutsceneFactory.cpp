@@ -2,6 +2,7 @@
 #include "2s2h/resource/type/Cutscene.h"
 
 extern "C" {
+#include "z64.h"
 #include "z64cutscene.h"
 }
 

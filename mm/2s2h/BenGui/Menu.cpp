@@ -588,7 +588,7 @@ void Menu::DrawElement() {
         ImGui::End();
         return;
     }
-#if !defined(__ANDROID__)
+#if !defined(__ANDROID__) && (!defined(__IOS__) || defined(__TVOS__))
     ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
 #else
     ImGui::PushFont(OTRGlobals::Instance->fontStandard);
@@ -599,7 +599,7 @@ void Menu::DrawElement() {
     windowHeight = window->WorkRect.GetHeight();
     windowWidth = window->WorkRect.GetWidth();
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
 #else
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
@@ -609,6 +609,53 @@ void Menu::DrawElement() {
     if (GetVectorIndexOf(menuOrder, headerIndex) == menuOrder.size()) {
         headerIndex = menuOrder.at(0);
     }
+#ifdef __TVOS__
+    enum class TvosMenuNavigationRegion {
+        Content,
+        Sidebar,
+        Header,
+    };
+    static TvosMenuNavigationRegion tvosNavigationRegion = TvosMenuNavigationRegion::Content;
+    if (freshOpen) {
+        tvosNavigationRegion = TvosMenuNavigationRegion::Content;
+    }
+
+    const bool navLeft = ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft, false) ||
+                         ImGui::IsKeyPressed(ImGuiKey_GamepadLStickLeft, false);
+    const bool navRight = ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight, false) ||
+                          ImGui::IsKeyPressed(ImGuiKey_GamepadLStickRight, false);
+    const bool navDown = ImGui::IsKeyPressed(ImGuiKey_GamepadDpadDown, false) ||
+                         ImGui::IsKeyPressed(ImGuiKey_GamepadLStickDown, false);
+    const bool navConfirm = ImGui::IsKeyPressed(ImGuiKey_GamepadFaceDown, false);
+    const bool previousHeader = ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false);
+    const bool nextHeader = ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false);
+
+    auto moveHeader = [&](int direction) {
+        if (menuOrder.empty()) {
+            return;
+        }
+        auto current = std::find(menuOrder.begin(), menuOrder.end(), headerIndex);
+        size_t index = current == menuOrder.end() ? 0 : static_cast<size_t>(current - menuOrder.begin());
+        index = direction < 0 ? (index + menuOrder.size() - 1) % menuOrder.size()
+                              : (index + 1) % menuOrder.size();
+        headerIndex = menuOrder.at(index);
+        CVarSetString(headerCvar, headerIndex.c_str());
+        CVarSave();
+    };
+
+    bool enteredSidebarFromHeader = false;
+    if (previousHeader || nextHeader) {
+        moveHeader(previousHeader ? -1 : 1);
+        tvosNavigationRegion = TvosMenuNavigationRegion::Header;
+    } else if (tvosNavigationRegion == TvosMenuNavigationRegion::Header) {
+        if (navLeft || navRight) {
+            moveHeader(navLeft ? -1 : 1);
+        } else if (navDown || navConfirm) {
+            tvosNavigationRegion = TvosMenuNavigationRegion::Sidebar;
+            enteredSidebarFromHeader = true;
+        }
+    }
+#endif
     ImVec2 pos = window->DC.CursorPos;
     float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
     std::vector<ImVec2> headerSizes;
@@ -619,7 +666,7 @@ void Menu::DrawElement() {
     float headerSearchWidth = 0.0f;
     float headerWidth = style.ItemSpacing.x;
     if (headerSearch) {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         headerSearchWidth = std::clamp(windowWidth * 0.11f, 72.0f, 160.0f);
 #else
         headerSearchWidth = 200.0f;
@@ -635,13 +682,18 @@ void Menu::DrawElement() {
         }
     }
     ImVec2 menuSize = { windowWidth, windowHeight };
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     if (windowWidth > 1280) {
         menuSize.x = std::fminf(windowWidth * 0.9f, windowHeight * 1.77f);
     }
     if (windowHeight > 800) {
         menuSize.y = windowHeight * 0.9f;
     }
+#elif defined(__TVOS__)
+    const float desktopMenuWidth = std::fminf(1280.0f, static_cast<float>(windowWidth));
+    const float tvosMenuWidth = std::fminf(static_cast<float>(windowWidth) * 0.78f, 1500.0f);
+    menuSize = { std::fminf(static_cast<float>(windowWidth), std::fmaxf(desktopMenuWidth, tvosMenuWidth)),
+                 std::fminf(800.0f, static_cast<float>(windowHeight)) };
 #else
     menuSize = { std::fminf(1280, windowWidth), std::fminf(800, windowHeight) };
 #endif
@@ -711,6 +763,13 @@ void Menu::DrawElement() {
         ImGui::PopStyleColor();
     }
     ImGui::EndChild();
+#ifdef __TVOS__
+    if (tvosNavigationRegion == TvosMenuNavigationRegion::Header) {
+        ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+                                            ImGui::GetColorU32(UIWidgets::ColorValues.at(menuThemeIndex)), 5.0f, 0,
+                                            4.0f);
+    }
+#endif
     ImGui::SameLine(menuSize.x - (buttonSize.x * 3) - style.ItemSpacing.x * 3);
     UIWidgets::ButtonOptions options = {};
     options.color = UIWidgets::Colors::Red;
@@ -782,13 +841,48 @@ void Menu::DrawElement() {
         menuEntries[headerIndex].sidebarOrder.size()) {
         sectionIndex = menuEntries[headerIndex].sidebarOrder.at(0);
     }
+#ifdef __TVOS__
+    bool focusSectionContent = false;
+    if (tvosNavigationRegion == TvosMenuNavigationRegion::Content && navLeft) {
+        tvosNavigationRegion = TvosMenuNavigationRegion::Sidebar;
+    } else if (tvosNavigationRegion == TvosMenuNavigationRegion::Sidebar && (navRight || navConfirm)) {
+        tvosNavigationRegion = TvosMenuNavigationRegion::Content;
+        focusSectionContent = true;
+    }
+
+    if (tvosNavigationRegion == TvosMenuNavigationRegion::Sidebar &&
+        !menuEntries.at(headerIndex).sidebarOrder.empty() && !enteredSidebarFromHeader) {
+        const bool previousSection =
+            ImGui::IsKeyPressed(ImGuiKey_GamepadDpadUp, false) ||
+            ImGui::IsKeyPressed(ImGuiKey_GamepadLStickUp, false);
+        if (previousSection || navDown) {
+            auto& order = menuEntries.at(headerIndex).sidebarOrder;
+            auto current = std::find(order.begin(), order.end(), sectionIndex);
+            size_t index = current == order.end() ? 0 : static_cast<size_t>(current - order.begin());
+            if (previousSection) {
+                if (index == 0) {
+                    tvosNavigationRegion = TvosMenuNavigationRegion::Header;
+                } else {
+                    index--;
+                }
+            } else if (index + 1 < order.size()) {
+                index++;
+            }
+            if (tvosNavigationRegion == TvosMenuNavigationRegion::Sidebar) {
+                sectionIndex = order.at(index);
+                CVarSetString(sidebarCvar, sectionIndex.c_str());
+                CVarSave();
+            }
+        }
+    }
+#endif
 
     float widestSidebarLabel = 0.0f;
     for (auto& sidebarLabel : menuEntries.at(headerIndex).sidebarOrder) {
         widestSidebarLabel = std::max(widestSidebarLabel, ImGui::CalcTextSize(sidebarLabel.c_str()).x);
     }
     sidebarWidth = std::max(sidebarWidth, widestSidebarLabel + style.FramePadding.x * 2 + style.ItemSpacing.x * 2);
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     sidebarWidth = std::clamp(sidebarWidth, std::min(120.0f, menuSize.x * 0.24f), menuSize.x * 0.24f);
 #else
     sidebarWidth = std::min(sidebarWidth, menuSize.x * 0.25f);
@@ -821,8 +915,15 @@ void Menu::DrawElement() {
         }
     }
     ImGui::EndChild();
+#ifdef __TVOS__
+    if (tvosNavigationRegion == TvosMenuNavigationRegion::Sidebar) {
+        ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+                                            ImGui::GetColorU32(UIWidgets::ColorValues.at(menuThemeIndex)), 5.0f, 0,
+                                            4.0f);
+    }
+#endif
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     ImGui::PushFont(OTRGlobals::Instance->fontMono);
 #else
     ImGui::PushFont(OTRGlobals::Instance->fontMonoLarger);
@@ -842,7 +943,7 @@ void Menu::DrawElement() {
     if (windowWidth < 800) {
         columns = 1;
     }
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     columns = 1;
 #endif
     if (columns < 1) {
@@ -854,6 +955,11 @@ void Menu::DrawElement() {
         ImGui::SameLine();
         ImGui::BeginChild(sectionMenuId.c_str(), { sectionWidth, columnHeight }, ImGuiChildFlags_None,
                           ImGuiWindowFlags_NoTitleBar);
+#ifdef __TVOS__
+        if (focusSectionContent) {
+            ImGui::SetWindowFocus();
+        }
+#endif
     }
     if (headerSearch && menuSearchText.length() > 0) {
         uint32_t searchCount = DrawSearchResults(menuSearchText);
@@ -885,6 +991,11 @@ void Menu::DrawElement() {
             if (useColumns) {
                 ImGui::BeginChild(sectionId.c_str(), { columnWidth, columnHeight }, ImGuiChildFlags_None,
                                   ImGuiWindowFlags_NoTitleBar);
+#ifdef __TVOS__
+                if (focusSectionContent && i == 0) {
+                    ImGui::SetWindowFocus();
+                }
+#endif
             }
             // for (auto& entryName : sidebar->at(sectionIndex).sidebarOrder) {
             for (auto& entry : sidebar->at(sectionIndex).columnWidgets.at(i)) {

@@ -123,14 +123,14 @@ void wait_for_java_setup() {
 
 void InitOTR();
 void Heaps_Free(void);
-#ifdef __GNUC__
-#define SDL_main main
+
+#if defined(__ANDROID__) || defined(__IOS__)
+int SDL_main(int argc, char** argv /* void* arg*/) {
+#else
+int main(int argc, char** argv /* void* arg*/) {
 #endif
 #ifdef __ANDROID__
-int SDL_main(int argc, char** argv /* void* arg*/) {
     wait_for_java_setup(); // Pause here until Java is ready
-#else
-void SDL_main(int argc, char** argv /* void* arg*/) {
 #endif
     intptr_t fb;
     intptr_t sysHeap;
@@ -229,4 +229,5 @@ void SDL_main(int argc, char** argv /* void* arg*/) {
     FreeConsole();
 #endif
     Heaps_Free();
+    return 0;
 }

@@ -8,6 +8,9 @@
 #include "BenPort.h"
 #include <ship/window/Window.h>
 
+#ifdef __IOS__
+#endif
+
 extern "C" {
 #include "z64save.h"
 #include "macros.h"
@@ -118,6 +121,8 @@ void SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::
         std::ofstream o(filePath);
         o << std::setw(4) << j << std::endl;
         o.close();
+#ifdef __IOS__
+#endif
     } catch (...) { SPDLOG_ERROR("Failed to write save file"); }
 }
 
@@ -128,6 +133,8 @@ void SaveManager_DeleteSaveFile(const std::filesystem::path& fileName) {
     try {
         if (std::filesystem::exists(filePath)) {
             std::filesystem::remove(filePath);
+#ifdef __IOS__
+#endif
         }
     } catch (...) { SPDLOG_ERROR("Failed to delete save file"); }
 }

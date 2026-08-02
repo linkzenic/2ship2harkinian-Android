@@ -1,0 +1,37 @@
+name: Build unsigned iOS release
+
+on:
+  push:
+    tags:
+      - "v*-ios-*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build unsigned iOS app
+        env:
+          TWO_SHIP_IOS_VERSION: 4.0.2
+          TWO_SHIP_IOS_BUILD_NUMBER: ${{ github.run_number }}
+        run: ./scripts/build-ios.sh --device
+      - name: Package and scan unsigned IPA
+        run: ./scripts/package-ios-unsigned.sh
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 2-Ship-2-Harkinian-iOS-unsigned
+          path: dist/2Ship-2-Harkinian-iOS-unsigned.ipa
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/2Ship-2-Harkinian-iOS-unsigned.ipa
+          generate_release_notes: true

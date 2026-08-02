@@ -1,5 +1,6 @@
 #include <vector>
 #include <imgui.h>
+#include "ultra64.h"
 #include "ship/window/gui/GuiWindow.h"
 
 #define ITEM_TEXTURE_SIZE 46.0f

@@ -7,8 +7,10 @@
 
 #include "FrameInterpolation.h"
 #include "2s2h/BenPort.h"
+extern "C" {
 #include <sys_matrix.h>
 #include <z64skin_matrix.h>
+}
 
 /*
 Frame interpolation.

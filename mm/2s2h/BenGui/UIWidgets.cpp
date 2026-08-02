@@ -12,7 +12,7 @@
 namespace UIWidgets {
 
 static ImVec2 AndroidCompactPadding(ImVec2 padding) {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__IOS__)
     return ImVec2(std::min(padding.x, 6.0f), std::min(padding.y, 3.0f));
 #else
     return padding;
@@ -20,7 +20,7 @@ static ImVec2 AndroidCompactPadding(ImVec2 padding) {
 }
 
 static float AndroidCompactBorder(float border) {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__IOS__)
     return std::min(border, 1.0f);
 #else
     return border;
@@ -28,7 +28,7 @@ static float AndroidCompactBorder(float border) {
 }
 
 static float AndroidCompactAlpha(float alpha) {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__IOS__)
     return std::min(alpha, 0.85f);
 #else
     return alpha;

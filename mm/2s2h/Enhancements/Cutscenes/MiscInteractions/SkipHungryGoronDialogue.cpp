@@ -1,6 +1,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
+#include "functions.h"
 
 #define CVAR_NAME "gEnhancements.Cutscenes.SkipMiscInteractions"
 #define CVAR CVarGetInteger(CVAR_NAME, 0)

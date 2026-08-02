@@ -1,6 +1,7 @@
 #include "Spoiler.h"
 #include "Rando/Rando.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <spdlog/spdlog.h>
 #include "ShipUtils.h"
 
 extern "C" {
