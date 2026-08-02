@@ -102,6 +102,7 @@ source_group("include" FILES ${Header_Files__include})
 file(GLOB_RECURSE ship__ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "2s2h/*.c" "2s2h/*.cpp" "2s2h/*.h" "2s2h/*.hpp")
 if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
     list(APPEND ship__
+        ios/TwoShipAppleFullscreen.cpp
         ios/TwoShipSaveBridgeSync.h
         ios/TwoShipSaveBridgeSync.mm
         ios/Assets.xcassets
