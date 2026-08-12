@@ -5,9 +5,12 @@
 #pragma comment(lib, "Shlwapi.lib")
 #endif
 #include "Extract.h"
+#if !defined(__TVOS__)
 #include "portable-file-dialogs.h"
+#endif
 #include <ship/utils/binarytools/BitConverter.h>
 #include "build.h"
+#include <ship/Context.h>
 
 #ifdef unix
 #include <dirent.h>
@@ -38,6 +41,12 @@
 #define UNREACHABLE __builtin_unreachable();
 #endif
 
+#ifdef __ANDROID__
+#include <SDL2/SDL.h>
+#include <jni.h>
+#include <string>
+#endif
+
 #include <stdlib.h>
 
 #include <SDL2/SDL_messagebox.h>
@@ -48,6 +57,7 @@
 #include <unordered_map>
 #include <random>
 #include <string>
+#include <sstream>
 
 extern "C" uint32_t CRC32C(unsigned char* data, size_t dataSize);
 
@@ -70,6 +80,29 @@ enum class ButtonId : int {
     NO,
     FIND,
 };
+
+#ifdef __ANDROID__
+
+const char* javaRomPath = NULL;
+bool fileDialogOpen = false;
+
+// function to be called from C
+void openFilePickerFromC(JNIEnv* env, jobject javaObject) {
+    fileDialogOpen = true;
+    jclass javaClass = env->GetObjectClass(javaObject);
+    jmethodID openFilePickerMethod = env->GetMethodID(javaClass, "openFilePicker", "()V");
+    env->CallVoidMethod(javaObject, openFilePickerMethod);
+}
+// Define the native method to handle the selected file path
+extern "C" void JNICALL Java_com_twoshipfork_mm_MainActivity_nativeHandleSelectedFile(JNIEnv* env, jobject obj,
+                                                                                 jstring filePath) {
+    const char* filePathStr = env->GetStringUTFChars(filePath, 0);
+    javaRomPath = strdup(filePathStr); // save filepath to string
+    fileDialogOpen = false;
+    env->ReleaseStringUTFChars(filePath, filePathStr);
+}
+
+#endif
 
 void Extractor::ShowErrorBox(const char* title, const char* text) {
 #ifdef _WIN32
@@ -282,9 +315,25 @@ bool Extractor::GetRomPathFromBox() {
         return false;
     }
     mCurrentRomPath = nameBuffer;
+#elif defined(__TVOS__)
+    // Apple TV has no system file picker. ROM files are uploaded over the
+    // local-network transfer page and discovered by the startup rescan.
+    return false;
 #else
+#ifndef __ANDROID__
     auto selection = pfd::open_file("Select a file", mSearchPath, { "N64 Roms", "*.z64 *.n64 *.v64" }).result();
-
+#else
+    JNIEnv* javaEnv = (JNIEnv*)SDL_AndroidGetJNIEnv();
+    jobject javaObject = (jobject)SDL_AndroidGetActivity();
+    std::vector<std::string> selection;
+    openFilePickerFromC(javaEnv, javaObject);
+    while (fileDialogOpen) {
+        // Do nothing until it's chosen
+        SDL_Delay(250);
+    }
+    SDL_Log("%s", javaRomPath);
+    selection.push_back(javaRomPath);
+#endif
     if (selection.empty()) {
         return false;
     }
@@ -292,6 +341,12 @@ bool Extractor::GetRomPathFromBox() {
     mCurrentRomPath = selection[0];
 #endif
     mCurRomSize = GetCurRomSize();
+#ifdef __ANDROID__
+    if (javaRomPath) {
+        free((void*)javaRomPath);
+        javaRomPath = NULL;
+    }
+#endif
     return true;
 }
 
@@ -455,6 +510,9 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
     FilterRoms(roms, searchMode);
 
     if (roms.empty()) {
+#if defined(__TVOS__)
+        return false;
+#else
         int ret = ShowYesNoBox("No roms found", "No roms found. Look for one?");
 
         switch (ret) {
@@ -470,8 +528,10 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
                 UNREACHABLE;
                 break;
         }
+#endif
     }
 
+#if !defined(__TVOS__)
     if (roms.size() > 1) {
         int ret = ShowYesNoBox("Multiple ROMs Found", "Multiple ROM files were detected. Select one manually?");
         if (ret == IDYES) {
@@ -482,6 +542,7 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
             roms.push_back(mCurrentRomPath);
         }
     }
+#endif
 
     for (const auto& rom : roms) {
         SetRomInfo(rom);
@@ -497,7 +558,11 @@ bool Extractor::Run(std::string searchPath, RomSearchMode searchMode) {
         inFile.close();
         BitConverter::RomToBigEndian(mRomData.get(), mCurRomSize);
 
+#if defined(__TVOS__)
+        int option = (int)ButtonId::YES;
+#else
         int option = ShowRomPickBox(GetRomVerCrc());
+#endif
 
         if (option == (int)ButtonId::YES) {
             if (!ValidateRom(true)) {
@@ -547,7 +612,11 @@ const char* Extractor::GetZapdVerStr() const {
 }
 
 std::string Extractor::Mkdtemp() {
+#ifndef __ANDROID__
     std::string temp_dir = std::filesystem::temp_directory_path().string();
+#else
+    std::string temp_dir = Ship::Context::GetAppDirectoryPath();
+#endif
 
     // create 6 random alphanumeric characters
     static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -574,6 +643,7 @@ bool Extractor::CallZapd(std::string installPath, std::string exportdir, std::at
     constexpr int argc = 22;
     char xmlPath[1024];
     char confPath[1024];
+    char filelistsPath[1024];
     char portVersion[18]; // 5 digits for int16_max (x3) + separators + terminator
     std::array<const char*, argc> argv;
     const char* version = GetZapdVerStr();
@@ -589,14 +659,62 @@ bool Extractor::CallZapd(std::string installPath, std::string exportdir, std::at
     std::filesystem::copy(installPath + "/assets", tempdir + "/assets",
                           std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
 #else
+#ifndef __ANDROID__
     std::filesystem::create_symlink(installPath + "/assets", tempdir + "/assets");
+#else
+    std::filesystem::copy(installPath + "/assets", tempdir + "/assets",
+                          std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+#endif
 #endif
 
     std::filesystem::current_path(tempdir);
 
     snprintf(xmlPath, 1024, "assets/xml/%s", version);
+#ifdef __ANDROID__
+    snprintf(confPath, 1024, "assets/extractor/Config_%s.xml", version);
+    snprintf(filelistsPath, 1024, "assets/extractor/filelists");
+#else
     snprintf(confPath, 1024, "assets/Config_%s.xml", version);
+    snprintf(filelistsPath, 1024, "assets/filelists");
+#endif
     snprintf(portVersion, 18, "%d.%d.%d", gBuildVersionMajor, gBuildVersionMinor, gBuildVersionPatch);
+
+#ifdef __ANDROID__
+    std::ostringstream missingPaths;
+    if (!std::filesystem::exists(confPath)) {
+        missingPaths << confPath << "\n";
+    }
+    if (!std::filesystem::exists(xmlPath)) {
+        missingPaths << xmlPath << "\n";
+    }
+    if (!std::filesystem::exists(filelistsPath)) {
+        missingPaths << filelistsPath << "\n";
+    }
+
+    {
+        std::ofstream debugFile(installPath + "/extractor-debug.txt", std::ios::out | std::ios::trunc);
+        debugFile << "tempdir=" << tempdir << "\n";
+        debugFile << "curdir=" << curdir << "\n";
+        debugFile << "cwd=" << std::filesystem::current_path().string() << "\n";
+        debugFile << "installPath=" << installPath << "\n";
+        debugFile << "exportdir=" << exportdir << "\n";
+        debugFile << "romPath=" << romPath << "\n";
+        debugFile << "xmlPath=" << xmlPath << " exists=" << std::filesystem::exists(xmlPath) << "\n";
+        debugFile << "confPath=" << confPath << " exists=" << std::filesystem::exists(confPath) << "\n";
+        debugFile << "filelistsPath=" << filelistsPath << " exists=" << std::filesystem::exists(filelistsPath) << "\n";
+    }
+
+    if (!missingPaths.str().empty()) {
+        std::string error = "The Android extractor asset copy is incomplete. Missing paths in temp directory:\n\n" +
+                            missingPaths.str() +
+                            "\nDelete the assets folder in your selected 2S2H data folder and reinstall a freshly "
+                            "rebuilt APK.";
+        std::filesystem::current_path(curdir);
+        std::filesystem::remove_all(tempdir);
+        ShowErrorBox("Extractor Assets Missing", error.c_str());
+        return false;
+    }
+#endif
 
     argv[0] = "ZAPD";
     argv[1] = "ed";
@@ -605,7 +723,7 @@ bool Extractor::CallZapd(std::string installPath, std::string exportdir, std::at
     argv[4] = "-b";
     argv[5] = romPath.c_str();
     argv[6] = "-fl";
-    argv[7] = "assets/filelists";
+    argv[7] = filelistsPath;
     argv[8] = "-gsf";
     argv[9] = "0";
     argv[10] = "-rconf";

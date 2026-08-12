@@ -1,6 +1,7 @@
 #include "UIWidgets.hpp"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
+#include <algorithm>
 #include <string>
 #include <random>
 #include <unordered_map>
@@ -9,6 +10,30 @@
 #include "2s2h/BenPort.h"
 
 namespace UIWidgets {
+
+static ImVec2 AndroidCompactPadding(ImVec2 padding) {
+#if defined(__ANDROID__) || defined(__IOS__)
+    return ImVec2(std::min(padding.x, 6.0f), std::min(padding.y, 3.0f));
+#else
+    return padding;
+#endif
+}
+
+static float AndroidCompactBorder(float border) {
+#if defined(__ANDROID__) || defined(__IOS__)
+    return std::min(border, 1.0f);
+#else
+    return border;
+#endif
+}
+
+static float AndroidCompactAlpha(float alpha) {
+#if defined(__ANDROID__) || defined(__IOS__)
+    return std::min(alpha, 0.85f);
+#else
+    return alpha;
+#endif
+}
 
 // Automatically adds newlines to break up text longer than a specified number of characters
 // Manually included newlines will still be respected and reset the line length
@@ -117,8 +142,8 @@ void PushStyleButton(const ImVec4& color, const ImVec2 padding) {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.6f));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(padding));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, AndroidCompactBorder(5.0f));
 }
 
 void PushStyleButton(Colors color, ImVec2 padding) {
@@ -134,13 +159,13 @@ void PushStyleInput(const ImVec4& color) {
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.x, color.y, color.z, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.8f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(1.0f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(0.8f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(0.6f)));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(ImVec2(10.0f, 8.0f)));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, AndroidCompactBorder(5.0f));
 }
 
 void PushStyleInput(Colors color) {
@@ -230,14 +255,14 @@ bool WindowButton(const char* label, const char* cvarName, std::shared_ptr<Ship:
 }
 
 void PushStyleCheckbox(const ImVec4& color, ImVec2 padding) {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 0.8f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(1.0f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(0.8f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(0.6f)));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.3f));
     ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(1.0f, 1.0f, 1.0f, 0.7f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, padding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(padding));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, AndroidCompactBorder(5.0f));
 }
 
 void PushStyleCheckbox(Colors color, ImVec2 padding) {
@@ -584,7 +609,7 @@ void PushStyleCombobox(const ImVec4& color) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(ImVec2(10.0f, 6.0f)));
 }
 
 void PushStyleCombobox(Colors color) {
@@ -606,7 +631,7 @@ void PushStyleTabs(const ImVec4& color) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(ImVec2(10.0f, 6.0f)));
 }
 
 void PushStyleTabs(Colors color) {
@@ -620,15 +645,15 @@ void PopStyleTabs() {
 
 void PushStyleSlider(Colors color_) {
     const ImVec4& color = ColorValues.at(color_);
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(1.0f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(1.0f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(color.x, color.y, color.z, AndroidCompactAlpha(1.0f)));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(color.x, color.y, color.z, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(1.0, 1.0, 1.0, 0.4f));
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(1.0, 1.0, 1.0, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, AndroidCompactPadding(ImVec2(10.0f, 8.0f)));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
 }
 

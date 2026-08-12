@@ -23,6 +23,9 @@ void DrawMenuBarIcon() {
 #elif defined(__WIIU__)
         ImVec2 iconSize = ImVec2(16.0f * 2, 16.0f * 2);
         float posScale = 2.0f;
+#elif defined(__ANDROID__) || defined(__IOS__)
+        ImVec2 iconSize = ImVec2(16.0f * 2, 16.0f * 2);
+        float posScale = 2.0f;
 #else
         ImVec2 iconSize = ImVec2(16.0f, 16.0f);
         float posScale = 1.0f;
@@ -39,7 +42,7 @@ void DrawMenuBarIcon() {
 void DrawBenMenu() {
     if (UIWidgets::BeginMenu("2Ship")) {
         if (UIWidgets::MenuItem("Hide Menu Bar",
-#if !defined(__SWITCH__) && !defined(__WIIU__)
+#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__ANDROID__) && !defined(__IOS__)
                                 "F1"
 #else
                                 "[-]"
@@ -47,7 +50,7 @@ void DrawBenMenu() {
                                 )) {
             Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenuBar()->ToggleVisibility();
         }
-#if !defined(__SWITCH__) && !defined(__WIIU__)
+#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__ANDROID__) && !defined(__IOS__)
         if (UIWidgets::MenuItem("Toggle Fullscreen", "F11")) {
             Ship::Context::GetRawInstance()->GetWindow()->ToggleFullscreen();
         }
@@ -55,7 +58,7 @@ void DrawBenMenu() {
         if (UIWidgets::MenuItem("Reset",
 #ifdef __APPLE__
                                 "Command-R"
-#elif !defined(__SWITCH__) && !defined(__WIIU__)
+#elif !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__ANDROID__) && !defined(__IOS__)
                                 "Ctrl+R"
 #else
                                 ""
@@ -65,7 +68,7 @@ void DrawBenMenu() {
                 Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))
                 ->Dispatch("reset");
         }
-#if !defined(__SWITCH__) && !defined(__WIIU__)
+#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__ANDROID__) && !defined(__IOS__)
         if (UIWidgets::MenuItem("Open App Files Folder")) {
             std::string filesPath = Ship::Context::GetRawInstance()->GetAppDirectoryPath();
             SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
