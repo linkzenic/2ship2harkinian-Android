@@ -6,7 +6,7 @@ Original repository: https://github.com/HarbourMasters/2ship2harkinian
 
 Original port: https://github.com/Waterdish/2ship2harkinian-Android
 
-Current Android release: **v5.0.0-android.1**
+Current Android release: **v5.0.1-android.1**
 
 Supported: Android 7+ with OpenGL ES 3.0+
 

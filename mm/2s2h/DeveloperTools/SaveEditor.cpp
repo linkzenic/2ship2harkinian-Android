@@ -2305,10 +2305,6 @@ void DrawFlagsTab() {
                             collected = Flags_GetCollectible(gPlayState, flag);
                             label = fmt::format("currentSceneFlags | Collectible[0] | 0x{:02X}", flag);
                             break;
-                        case FLAG_CYCL_SCENE_CHEST:
-                            collected = Flags_GetTreasure(gPlayState, flag);
-                            label = fmt::format("currentSceneFlags | Chest | 0x{:02X}", flag);
-                            break;
                         case FLAG_CYCL_SCENE_SWITCH:
                             collected = Flags_GetSwitch(gPlayState, flag);
                             label = fmt::format("currentSceneFlags | Switch[0] | 0x{:02X}", flag);
@@ -2323,11 +2319,6 @@ void DrawFlagsTab() {
                         case FLAG_CYCL_SCENE_COLLECTIBLE:
                             collected = gSaveContext.cycleSceneFlags[heartFlag.scene].collectible & (1 << flag);
                             label = fmt::format("cycleSceneFlags | {} | Collectible | 0x{:02X}",
-                                                sceneList.at(heartFlag.scene), flag);
-                            break;
-                        case FLAG_CYCL_SCENE_CHEST:
-                            collected = gSaveContext.cycleSceneFlags[heartFlag.scene].chest & (1 << flag);
-                            label = fmt::format("cycleSceneFlags | {} | Chest | 0x{:02X}",
                                                 sceneList.at(heartFlag.scene), flag);
                             break;
                         case FLAG_CYCL_SCENE_SWITCH:

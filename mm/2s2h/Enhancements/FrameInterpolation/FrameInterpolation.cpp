@@ -273,6 +273,8 @@ struct InterpolateCtx {
     }
 
     void interpolate_branch(Path* old_path, Path* new_path) {
+        const bool self_paired = old_path == new_path;
+
         for (auto& item : new_path->items) {
             Data& new_op = new_path->ops[item.first][item.second];
 
@@ -389,7 +391,9 @@ struct InterpolateCtx {
 
                         case Op::MatrixToMtx: {
                             //*new_replacement(new_op.matrix_to_mtx.dest) = *Matrix_GetCurrent();
-                            if (old_op.matrix_to_mtx.has_adjusted != new_op.matrix_to_mtx.has_adjusted) {
+                            if (self_paired && new_op.matrix_to_mtx.has_adjusted) {
+                                *new_replacement(new_op.matrix_to_mtx.dest) = new_op.matrix_to_mtx.raw;
+                            } else if (old_op.matrix_to_mtx.has_adjusted != new_op.matrix_to_mtx.has_adjusted) {
                                 // has_adjusted toggled between frames (e.g. ActorShadow_Draw's isotropic-shadow
                                 // check flipping as scale.x drifts in and out of equality with scale.z). old.src
                                 // and new.src aren't comparable here: whichever side has has_adjusted=true holds

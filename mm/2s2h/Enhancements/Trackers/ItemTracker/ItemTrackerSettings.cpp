@@ -39,15 +39,22 @@ std::vector<std::pair<TrackerItemType, u32>> GetItemsFromRange(TrackerItemType i
     return items;
 }
 
+// Some items don't have a 1:1 with rando items (eg ITEM_BOMB != RI_BOMBS_5) so we just handle them manually
+static const std::unordered_map<u32, const char*> sVanillaItemNames = {
+    { ITEM_BOMB, "Bombs" },
+    { ITEM_BOMBCHU, "Bombchus" },
+};
+
 std::string GetItemTrackerItemName(TrackerItemType itemType, u32 itemId) {
     switch (itemType) {
         case TRACKER_ITEM_RANDO: {
             return Rando::StaticData::Items[(RandoItemId)itemId].name;
         } break;
         case TRACKER_ITEM_SLOT: {
-            auto vanillaItemId = gSaveContext.save.saveInfo.inventory.items[itemId];
-            if (vanillaItemId == ITEM_NONE) {
-                vanillaItemId = safeItemsForInventorySlot[itemId][0];
+            u32 vanillaItemId = GetVanillaItemIdForSlot(itemId);
+            auto vanillaItemName = sVanillaItemNames.find(vanillaItemId);
+            if (vanillaItemName != sVanillaItemNames.end()) {
+                return vanillaItemName->second;
             }
             RandoItemId randoItemId = Rando::StaticData::GetItemIdFromVanillaItemId(vanillaItemId);
             return Rando::StaticData::Items[randoItemId].name;

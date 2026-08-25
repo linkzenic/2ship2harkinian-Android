@@ -2277,6 +2277,9 @@ void FileSelect_LoadGame(GameState* thisx) {
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_LEFT] = BTN_ENABLED;
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_DOWN] = BTN_ENABLED;
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_UP] = BTN_ENABLED;
+    // This is only zeroed out when playing SoT, so if they give masks and soft reset it's wrongly persisted.
+    // To fix, we just always zero it out when loading a file.
+    memset(gSaveContext.masksGivenOnMoon, 0, sizeof(gSaveContext.masksGivenOnMoon));
     // #endregion
     gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_ENABLED;
 
@@ -2593,6 +2596,9 @@ void FileSelect_InitContext(GameState* thisx) {
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_LEFT] = BTN_ENABLED;
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_DOWN] = BTN_ENABLED;
     gSaveContext.shipSaveContext.dpad.status[EQUIP_SLOT_D_UP] = BTN_ENABLED;
+    // This is only zeroed out when playing SoT, so if they give masks and soft reset it's wrongly persisted.
+    // To fix, we just always zero it out when loading a file.
+    memset(gSaveContext.masksGivenOnMoon, 0, sizeof(gSaveContext.masksGivenOnMoon));
     // #endregion
     gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_ENABLED;
 }

@@ -2,6 +2,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
+#include "2s2h/Rando/Logic/Logic.h"
 
 extern "C" {
 #include "archives/icon_item_static/icon_item_static_yar.h"
@@ -489,7 +490,8 @@ static void RegisterSongItems() {
         ItemId* item = va_arg(args, ItemId*);
 
         if (IsSongItem(*item)) {
-            if (INV_CONTENT(ITEM_OCARINA_OF_TIME) != ITEM_OCARINA_OF_TIME) {
+            if (INV_CONTENT(ITEM_OCARINA_OF_TIME) != ITEM_OCARINA_OF_TIME ||
+                (IS_RANDO && !Rando::Logic::canPlaySong(SongItemToOcarinaId(*item)))) {
                 if (!sOcarinaErrorPlayed) {
                     Audio_PlaySfx(NA_SE_SY_OCARINA_ERROR);
                     sOcarinaErrorPlayed = true;

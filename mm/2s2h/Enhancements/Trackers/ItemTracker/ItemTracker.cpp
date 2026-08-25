@@ -66,6 +66,18 @@ static bool IsTradeItemObtained(RandoItemId randoItemId) {
     }
 }
 
+// When the file isn't loaded everythin is ocarinas, so we fall back to the first safe item
+u32 GetVanillaItemIdForSlot(u32 slot) {
+    bool isSaveLoaded = gPlayState != NULL && gSaveContext.gameMode == GAMEMODE_NORMAL;
+    u32 vanillaItemId = isSaveLoaded ? gSaveContext.save.saveInfo.inventory.items[slot] : ITEM_NONE;
+
+    if (vanillaItemId == ITEM_NONE || vanillaItemId >= ITEM_RECOVERY_HEART) {
+        vanillaItemId = safeItemsForInventorySlot[slot][0];
+    }
+
+    return vanillaItemId;
+}
+
 TrackerImageObject GetImageObject(TrackerItemType itemType, u32 itemId) {
     bool isSaveLoaded = gPlayState != NULL && gSaveContext.gameMode == GAMEMODE_NORMAL;
     bool itemObtained = false;
@@ -149,10 +161,7 @@ TrackerImageObject GetImageObject(TrackerItemType itemType, u32 itemId) {
         } break;
         case TRACKER_ITEM_SLOT: {
             itemObtained = gSaveContext.save.saveInfo.inventory.items[itemId] != ITEM_NONE;
-            auto vanillaItemId = isSaveLoaded ? gSaveContext.save.saveInfo.inventory.items[itemId] : ITEM_NONE;
-            if (vanillaItemId == ITEM_NONE || vanillaItemId >= ITEM_RECOVERY_HEART) {
-                vanillaItemId = safeItemsForInventorySlot[itemId][0];
-            }
+            auto vanillaItemId = GetVanillaItemIdForSlot(itemId);
 
             trackerImageObject.textureId =
                 std::dynamic_pointer_cast<Fast::Fast3dGui>(Ship::Context::GetRawInstance()->GetWindow()->GetGui())
