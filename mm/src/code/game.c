@@ -14,6 +14,10 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
+#ifdef __ANDROID__
+void ResourceMgr_ReleaseGameStateTextures(void);
+#endif
+
 #pragma increment_block_number "n64-us:128"
 
 s32 gFramerateDivisor = 1;
@@ -265,6 +269,9 @@ void GameState_Destroy(GameState* gameState) {
     THA_Destroy(&gameState->tha);
     GameAlloc_Cleanup(&gameState->alloc);
     gGameState = NULL;
+#ifdef __ANDROID__
+    ResourceMgr_ReleaseGameStateTextures();
+#endif
 }
 
 GameStateFunc GameState_GetInit(GameState* gameState) {

@@ -446,6 +446,13 @@ unordered_map<Mtx*, MtxF> FrameInterpolation_Interpolate(float step) {
 
 bool camera_interpolation = false;
 
+void FrameInterpolation_ClearRecordings(void) {
+    is_recording = false;
+    current_path.clear();
+    previous_recording = {};
+    current_recording = {};
+}
+
 void FrameInterpolation_ShouldInterpolateFrame(bool shouldInterpolate) {
     camera_interpolation = shouldInterpolate;
 }
