@@ -133,6 +133,13 @@ if(NOT CMAKE_BUILD_TYPE )
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # Retain bounded frame chains and source locations in the separate native symbols.
+    add_compile_options(-fno-omit-frame-pointer -fno-optimize-sibling-calls -gline-tables-only
+        "-ffile-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=.")
+endif()
+
 ################################################################################
 # Common utils
 ################################################################################

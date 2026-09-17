@@ -38,6 +38,8 @@ jobs:
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror -Ilibultraship/include tests/color-combiner-key.cpp -o /tmp/color-combiner-key-test
           /tmp/color-combiner-key-test
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror -Ilibultraship/include tests/crash-frame-walker.cpp -o /tmp/crash-frame-walker-test
+          /tmp/crash-frame-walker-test
 
       - name: Install dependencies
         run: |
@@ -126,8 +128,8 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "ANDROID_KEYSTORE_BASE64 is not configured; APK will use debug signing."
-            exit 0
+            echo "Release signing key is required for this candidate."
+            exit 1
           fi
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
             echo "Release signing is partially configured. Set ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
@@ -149,6 +151,19 @@ jobs:
             app_id_args+=('-PtwoShipApplicationId=com.twoshipfork.mm.touchcontroltest')
           fi
           ./gradlew :app:assembleRelease "${app_id_args[@]}"
+
+      - name: Collect matching native symbols
+        run: |
+          mkdir -p native-symbols
+          find Android/app/build/intermediates/cxx/Release -path '*/obj/arm64-v8a/*.so' -exec cp '{}' native-symbols/ \;
+          test -s native-symbols/lib2ship.so
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: 2Ship-Android-native-symbols
+          path: native-symbols/*.so
+          if-no-files-found: error
+          retention-days: 14
 
       - uses: actions/upload-artifact@v7
         with:

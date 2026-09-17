@@ -71,6 +71,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/config/ConfigUpdaters.h"
 
 #ifdef __ANDROID__
+#include <ship/port/mobile/MobileImpl.h>
 extern "C" void Android_SetDataRootPath(const char* path) {
     if (path != nullptr) {
         Ship::Context::SetAndroidDataRootPath(path);
@@ -978,6 +979,9 @@ bool VerifyArchiveVersion(ArchiveVersion version) {
 }
 
 extern "C" void InitOTR(int argc, char* argv[]) {
+#ifdef __ANDROID__
+    Ship::Mobile::InitThreadDiagnostics();
+#endif
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
 
