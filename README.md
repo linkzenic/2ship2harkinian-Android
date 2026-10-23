@@ -2,9 +2,8 @@
 
 Android port of 2 Ship 2 Harkinian, based on the HarbourMasters project and forked from Waterdish's original Android port.
 
-Original repository: https://github.com/HarbourMasters/2ship2harkinian
-
-Original port: https://github.com/Waterdish/2ship2harkinian-Android
+Original repository: [https://github.com/HarbourMasters/2ship2harkinian
+](https://github.com/2ship2harkinian/2ship2harkinian)
 
 Current Android release: **v5.0.1-android.2**
 
