@@ -299,6 +299,10 @@ public class MainActivity extends SDLActivity{
     }
 
     private File getDefaultDataRootFolder() {
+        if (BuildConfig.APPLICATION_ID.equals("com.twoshipfork.mm.performancetest") ||
+                BuildConfig.APPLICATION_ID.equals("com.twoshipfork.mm.performancetestci")) {
+            return new File(Environment.getExternalStorageDirectory(), "2S2H-performance-test");
+        }
         return new File(Environment.getExternalStorageDirectory(), "2S2H");
     }
 

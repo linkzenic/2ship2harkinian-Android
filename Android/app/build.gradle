@@ -3,8 +3,8 @@ def buildAsApplication = !buildAsLibrary
 def repoRoot = rootProject.projectDir.parentFile
 def androidVcpkgRoot = System.getenv("VCPKG_ROOT") ?: new File(repoRoot, "build/vcpkg").absolutePath
 def androidVcpkgRootArg = androidVcpkgRoot.replace('\\', '/')
-def androidAppVersionCode = 5001032
-def androidAppVersionName = "5.0.1-android.3-rc3"
+def androidAppVersionCode = 5001034
+def androidAppVersionName = "5.0.1-android.3-rc4"
 if (buildAsApplication) {
     apply plugin: 'com.android.application'
 }
@@ -27,12 +27,16 @@ android {
         targetSdkVersion 33
         versionCode androidAppVersionCode
         versionName androidAppVersionName
+        manifestPlaceholders = [twoShipAppLabel: project.findProperty('twoShipAppLabel') ?: "@string/app_name"]
         externalNativeBuild {
             //ndkBuild {
             //    arguments "APP_PLATFORM=android-23"
             //    abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
             //}
             cmake {
+                 if (project.hasProperty('twoShipPerformanceTest')) {
+                     arguments "-DTWO_SHIP_PERFORMANCE_TEST=ON"
+                 }
                  arguments "-DSDL_SHARED=ON", "-DANDROID_STL=c++_static", "-DHAVE_LD_VERSION_SCRIPT=OFF",'-DUSE_OPENGLES=ON', "-DPNG_SHARED=OFF", "-DPNG_STATIC=ON", "-DPNG_TESTS=OFF", "-DANDROID_VCPKG_ROOT=${androidVcpkgRootArg}", "-DANDROID_APP_VERSION_NAME=${androidAppVersionName}"
                  abiFilters 'arm64-v8a'
             }
