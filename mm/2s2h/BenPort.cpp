@@ -71,6 +71,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/config/ConfigUpdaters.h"
 
 #ifdef __ANDROID__
+#include <ship/port/mobile/MobileImpl.h>
 extern "C" void Android_SetDataRootPath(const char* path) {
     if (path != nullptr) {
         Ship::Context::SetAndroidDataRootPath(path);
@@ -978,6 +979,9 @@ bool VerifyArchiveVersion(ArchiveVersion version) {
 }
 
 extern "C" void InitOTR(int argc, char* argv[]) {
+#ifdef __ANDROID__
+    Ship::Mobile::InitThreadDiagnostics();
+#endif
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
 
@@ -1186,6 +1190,27 @@ extern "C" void Graph_StartFrame() {
     }
 #endif
 }
+
+#ifdef __ANDROID__
+extern "C" void ResourceMgr_ReleaseGameStateTextures() {
+    // Called on the game/render thread after actors and the state arena are destroyed.
+    FrameInterpolation_ClearRecordings();
+    SOH::SkeletonPatcher::ClearSkeletons();
+    auto window = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
+    if (!window) {
+        return;
+    }
+    auto interpreter = window->GetInterpreterWeak().lock();
+    if (!interpreter) {
+        return;
+    }
+    interpreter->ReleaseTextureCache();
+    // Keep audio, skeletons, display lists and other globally referenced resources alive.
+    // GUI-owned textures also remain cached because they have an additional shared owner.
+    Ship::Context::GetRawInstance()->GetResourceManager()->UnloadUnreferencedResources(
+        Ship::IResource::gAltAssetPrefix, static_cast<uint32_t>(Fast::ResourceType::Texture));
+}
+#endif
 
 // Interpolated frames of a tick are evenly spaced numerators time+step, time+2*step, ... over denom.
 void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {

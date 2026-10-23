@@ -3,6 +3,7 @@ on:
   push:
     branches-ignore:
       - android
+      - release/android-*
     tags-ignore:
       - "v*-android.*"
   pull_request:

@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 set(GAME_STR "MM")
 project(2s2h VERSION 5.0.1 LANGUAGES C CXX)
+option(TWO_SHIP_PERFORMANCE_TEST "Enable local performance sampling" OFF)
+if(TWO_SHIP_PERFORMANCE_TEST)
+    add_compile_definitions(TWO_SHIP_PERFORMANCE_TEST)
+endif()
 include(CMake/2ship-cvars.cmake)
 include(CMake/lus-cvars.cmake)
 set(SPDLOG_LEVEL_TRACE 0)
@@ -131,6 +135,13 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE )
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # Retain bounded frame chains and source locations in the separate native symbols.
+    add_compile_options(-fno-omit-frame-pointer -fno-optimize-sibling-calls -gline-tables-only
+        "-ffile-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=.")
 endif()
 
 ################################################################################

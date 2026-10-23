@@ -34,6 +34,15 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check renderer and crash-report regressions
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror -Ilibultraship/include tests/color-combiner-key.cpp -o /tmp/color-combiner-key-test
+          /tmp/color-combiner-key-test
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror -Ilibultraship/include tests/crash-frame-walker.cpp -o /tmp/crash-frame-walker-test
+          /tmp/crash-frame-walker-test
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror -Ilibultraship/include tests/texture-budget.cpp -o /tmp/texture-budget-test
+          /tmp/texture-budget-test
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -110,6 +119,8 @@ jobs:
           if [ ! -d "$VCPKG_ROOT" ]; then
             git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" --depth 1
           fi
+          git -C "$VCPKG_ROOT" fetch --depth 1 origin a073c28e52d920cb2465a17512324b3b6684d03a
+          git -C "$VCPKG_ROOT" checkout --detach a073c28e52d920cb2465a17512324b3b6684d03a
           "$VCPKG_ROOT/bootstrap-vcpkg.sh"
           "$VCPKG_ROOT/vcpkg" install --triplet arm64-android zlib libpng libogg libvorbis opus opusfile
 
@@ -121,8 +132,8 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "ANDROID_KEYSTORE_BASE64 is not configured; APK will use debug signing."
-            exit 0
+            echo "Release signing key is required for this candidate."
+            exit 1
           fi
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
             echo "Release signing is partially configured. Set ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
@@ -141,9 +152,23 @@ jobs:
         run: |
           app_id_args=()
           if [[ '${{ github.event_name }}' == 'workflow_dispatch' && '${{ inputs.install_target }}' == 'test' ]]; then
-            app_id_args+=('-PtwoShipApplicationId=com.twoshipfork.mm.touchcontroltest')
+            app_id_args+=('-PtwoShipApplicationId=com.twoshipfork.mm.performancetestci')
+            app_id_args+=('-PtwoShipPerformanceTest' '-PtwoShipAppLabel=2 Ship Performance Test (CI)')
           fi
           ./gradlew :app:assembleRelease "${app_id_args[@]}"
+
+      - name: Collect matching native symbols
+        run: |
+          mkdir -p native-symbols
+          find Android/app/build/intermediates/cxx -path '*/obj/arm64-v8a/*.so' -exec cp '{}' native-symbols/ \;
+          test -s native-symbols/lib2ship.so
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: 2Ship-Android-native-symbols
+          path: native-symbols/*.so
+          if-no-files-found: error
+          retention-days: 14
 
       - uses: actions/upload-artifact@v7
         with:
