@@ -149,6 +149,10 @@ void GameState_DrawEnd(GraphicsContext* gfxCtx) {
 }
 
 void GameState_GetInput(GameState* gameState) {
+#ifdef __ANDROID__
+    extern void TwoShipRefreshTouch(void);
+    TwoShipRefreshTouch();
+#endif
     PadMgr_GetInput(gameState->input, true);
 }
 

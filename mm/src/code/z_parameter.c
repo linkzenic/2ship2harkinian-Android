@@ -5874,6 +5874,10 @@ void Interface_SetOrthoView(InterfaceContext* interfaceCtx) {
 }
 
 void Interface_DrawItemButtons(PlayState* play) {
+#ifdef __ANDROID__
+    extern int TwoShipTouchHudActive(void);
+    if (TwoShipTouchHudActive()) return;
+#endif
     static TexturePtr sCUpLabelTextures[LANGUAGE_MAX] = {
         gTatlCUpENGTex, // LANGUAGE_JPN
         gTatlCUpENGTex, // LANGUAGE_ENG
@@ -6106,7 +6110,46 @@ s16 sDpadItemIconTop[] = {
     47, // EQUIP_SLOT_D_UP
 };
 
+#ifdef __ANDROID__
+extern int TwoShipTouchRect(int slot,float* x,float* y,float* size);
+static int Interface_DrawTouchIcon(PlayState* play, TexturePtr texture, int slot) {
+    float x,y,size;
+    int visible=TwoShipTouchRect(slot,&x,&y,&size);
+    if (visible <= 0) return visible != 0;
+    int left=OTRGetRectDimensionFromLeftEdge(0);
+    int width=OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH)-left;
+    int side=MAX(1,(int)(size*SCREEN_HEIGHT));
+    int px=left+(int)(x*width)-side/2, py=(int)(y*SCREEN_HEIGHT)-side/2;
+    OPEN_DISPS(play->state.gfxCtx);
+    gDPLoadTextureBlock(OVERLAY_DISP++,texture,G_IM_FMT_RGBA,G_IM_SIZ_32b,32,32,0,G_TX_WRAP,G_TX_WRAP,0,0,0,0);
+    gSPWideTextureRectangle(OVERLAY_DISP++,px*4,py*4,(px+side)*4,(py+side)*4,G_TX_RENDERTILE,0,0,32768/side,32768/side);
+    CLOSE_DISPS(play->state.gfxCtx);
+    return 1;
+}
+#endif
+#ifdef __ANDROID__
+static int Interface_DrawTouchAmmo(PlayState* play,int slot,int tens,int ones) {
+    float x,y,s;
+    int visible=TwoShipTouchRect(slot,&x,&y,&s);
+    if(visible<=0) return visible!=0;
+    int left=OTRGetRectDimensionFromLeftEdge(0);
+    int px=left+(int)(x*(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH)-left))-6;
+    int py=(int)((y+s*.25f)*SCREEN_HEIGHT);
+    OPEN_DISPS(play->state.gfxCtx);
+    for(int digit=tens?0:1;digit<2;digit++) {
+        gDPLoadTextureBlock(OVERLAY_DISP++,gAmmoDigitTextures[digit?ones:tens],G_IM_FMT_IA,G_IM_SIZ_8b,8,8,0,G_TX_WRAP,G_TX_WRAP,0,0,0,0);
+        int dx=px+digit*6;
+        gSPWideTextureRectangle(OVERLAY_DISP++,dx*4,py*4,(dx+8)*4,(py+8)*4,G_TX_RENDERTILE,0,0,1024,1024);
+    }
+    CLOSE_DISPS(play->state.gfxCtx);
+    return 1;
+}
+#endif
 void Interface_Dpad_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16 button) {
+#ifdef __ANDROID__
+    static const int slots[]={7,6,5,4};
+    if ((unsigned)button<4 && Interface_DrawTouchIcon(play,texture,slots[button])) return;
+#endif
     static s16 sDpadItemIconWidth[] = { 16, 16, 16, 16 };
 
     OPEN_DISPS(play->state.gfxCtx);
@@ -6208,6 +6251,10 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
             ammo -= 10;
         }
 
+#ifdef __ANDROID__
+        if (!Interface_DrawTouchAmmo(play,7-button,i,ammo))
+#endif
+        {
         // Draw upper digit (tens)
         if ((u32)i != 0) {
             HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
@@ -6219,6 +6266,7 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
         OVERLAY_DISP = Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[ammo], 8, 8, sDpadItemAmmoX[button] + 6,
                                           sDpadItemAmmoY[button], 8, 8, 1 << 10, 1 << 10);
+        }
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
@@ -6226,6 +6274,9 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
 // #endregion
 
 void Interface_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16 button) {
+#ifdef __ANDROID__
+    if ((unsigned)button<4 && Interface_DrawTouchIcon(play,texture,button)) return;
+#endif
     static s16 sItemIconTextureDimensions[] = {
         30, // EQUIP_SLOT_B
         24, // EQUIP_SLOT_C_LEFT
@@ -6334,6 +6385,10 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
             ammo -= 10;
         }
 
+#ifdef __ANDROID__
+        if (!Interface_DrawTouchAmmo(play,button,i,ammo))
+#endif
+        {
         // Draw upper digit (tens)
         if ((u32)i != 0) {
             HudEditor_SetActiveElement(button);
@@ -6348,11 +6403,30 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         OVERLAY_DISP =
             Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[ammo], 8, 8, sAmmoDigitsXPositions[button] + 6,
                                sAmmoDigitsYPositions[button], 8, 8, 1 << 10, 1 << 10);
+        }
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+#ifdef __ANDROID__
+// The B action text (Punch, etc.) is a different draw path from the B item icon.
+static int Interface_DrawTouchBAction(PlayState* play) {
+    float x, y, size;
+    int visible = TwoShipTouchRect(0, &x, &y, &size);
+    if (visible <= 0) return visible != 0;
+    int left = OTRGetRectDimensionFromLeftEdge(0);
+    int width = MAX(1, (int)(size * SCREEN_HEIGHT));
+    int height = MAX(1, width * DO_ACTION_TEX_HEIGHT / DO_ACTION_TEX_WIDTH);
+    int px = left + (int)(x * (OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) - left)) - width / 2;
+    int py = (int)(y * SCREEN_HEIGHT) - height / 2;
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPWideTextureRectangle(OVERLAY_DISP++, px*4, py*4, (px+width)*4, (py+height)*4, G_TX_RENDERTILE,
+                            0, 0, 1024*DO_ACTION_TEX_WIDTH/width, 1024*DO_ACTION_TEX_HEIGHT/height);
+    CLOSE_DISPS(play->state.gfxCtx);
+    return 1;
+}
+#endif
 void Interface_DrawBButtonIcons(PlayState* play) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     Player* player = GET_PLAYER(play);
@@ -6414,8 +6488,10 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                                DO_ACTION_TEX_WIDTH, DO_ACTION_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-        sBButtonDoActionTextureScale =
-            1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
+#ifdef __ANDROID__
+        if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
+#endif
+        sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
 
         // #region 2S2H [Cosmetic] Hud Editor
         HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_B);
@@ -6461,8 +6537,10 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                                DO_ACTION_TEX_WIDTH, DO_ACTION_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-        sBButtonDoActionTextureScale =
-            1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
+#ifdef __ANDROID__
+        if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
+#endif
+        sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
 
         // #region 2S2H [Cosmetic] Hud Editor
         HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_B);
@@ -6496,6 +6574,9 @@ void Interface_DrawBButtonIcons(PlayState* play) {
         }
     }
 
+#ifdef __ANDROID__
+bActionDrawn:
+#endif
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -6618,8 +6699,31 @@ void Interface_DrawAButton(PlayState* play) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     s16 aAlpha;
 
+#ifdef __ANDROID__
+    float tx,ty,ts;
+    int touchAction=TwoShipTouchRect(9,&tx,&ty,&ts);
+    if (touchAction) {
+        OPEN_DISPS(play->state.gfxCtx);
+        if (touchAction>0) {
+            int left=OTRGetRectDimensionFromLeftEdge(0);
+            int w=MAX(1,(int)(ts*SCREEN_HEIGHT)), h=MAX(1,w*DO_ACTION_TEX_HEIGHT/DO_ACTION_TEX_WIDTH);
+            int x=left+(int)(tx*(OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH)-left))-w/2;
+            int y=(int)(ty*SCREEN_HEIGHT)-h/2;
+            TexturePtr tex=(interfaceCtx->aButtonState <= A_BTN_STATE_CHANGE_1_UNPAUSED ||
+                            interfaceCtx->aButtonState == A_BTN_STATE_CHANGE_1_PAUSED)
+                           ? interfaceCtx->doActionSegment[DO_ACTION_SEG_A].mainTex
+                           : interfaceCtx->doActionSegment[DO_ACTION_SEG_A].subTex;
+            Gfx_SetupDL39_Overlay(play->state.gfxCtx);
+            gDPSetPrimColor(OVERLAY_DISP++,0,0,255,255,255,interfaceCtx->aAlpha);
+            gDPSetCombineMode(OVERLAY_DISP++,G_CC_MODULATEIA_PRIM,G_CC_MODULATEIA_PRIM);
+            gDPLoadTextureBlock_4b(OVERLAY_DISP++,tex,G_IM_FMT_IA,DO_ACTION_TEX_WIDTH,DO_ACTION_TEX_HEIGHT,0,G_TX_WRAP,G_TX_WRAP,0,0,0,0);
+            gSPWideTextureRectangle(OVERLAY_DISP++,x*4,y*4,(x+w)*4,(y+h)*4,G_TX_RENDERTILE,0,0,1024*DO_ACTION_TEX_WIDTH/w,1024*DO_ACTION_TEX_HEIGHT/h);
+        }
+        CLOSE_DISPS(play->state.gfxCtx);
+        return;
+    }
+#endif
     OPEN_DISPS(play->state.gfxCtx);
-
     aAlpha = interfaceCtx->aAlpha;
 
     if (aAlpha > 100) {

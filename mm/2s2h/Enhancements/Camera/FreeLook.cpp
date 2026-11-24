@@ -1,3 +1,6 @@
+#ifdef __ANDROID__
+extern "C" int TwoShipCameraAxis(int fallback,int vertical);
+#endif
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
@@ -98,9 +101,14 @@ bool Camera_FreeLook(Camera* camera) {
 
     Camera_ResetActionFuncState(camera, camera->mode);
 
-    f32 yawDiff = -sCamPlayState->state.input[0].cur.right_stick_x * 10.0f *
+#if defined(__ANDROID__)
+#define MM_TOUCH_CAMERA(v,axis) TwoShipCameraAxis(v,axis)
+#else
+#define MM_TOUCH_CAMERA(v,axis) (v)
+#endif
+    f32 yawDiff = -MM_TOUCH_CAMERA(sCamPlayState->state.input[0].cur.right_stick_x,0) * 10.0f *
                   (CVarGetFloat("gEnhancements.Camera.RightStick.CameraSensitivity.X", 1.0f));
-    f32 pitchDiff = sCamPlayState->state.input[0].cur.right_stick_y * 10.0f *
+    f32 pitchDiff = MM_TOUCH_CAMERA(sCamPlayState->state.input[0].cur.right_stick_y,1) * 10.0f *
                     (CVarGetFloat("gEnhancements.Camera.RightStick.CameraSensitivity.Y", 1.0f));
 
     yaw += yawDiff * GameInteractor_InvertControl(GI_INVERT_CAMERA_RIGHT_STICK_X);
@@ -154,8 +162,8 @@ bool Camera_FreeLook(Camera* camera) {
 }
 
 bool Camera_CanFreeLook(Camera* camera) {
-    f32 camX = sCamPlayState->state.input[0].cur.right_stick_x * 10.0f;
-    f32 camY = sCamPlayState->state.input[0].cur.right_stick_y * 10.0f;
+    f32 camX = MM_TOUCH_CAMERA(sCamPlayState->state.input[0].cur.right_stick_x,0) * 10.0f;
+    f32 camY = MM_TOUCH_CAMERA(sCamPlayState->state.input[0].cur.right_stick_y,1) * 10.0f;
 
     if (!sCanFreeLook && (fabsf(camX) >= 15.0f || fabsf(camY) >= 15.0f)) {
         sCanFreeLook = true;

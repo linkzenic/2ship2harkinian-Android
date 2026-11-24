@@ -109,6 +109,11 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;26.0.10792818" "cmake;3.30.3"
 
+      - name: Check touch layout and bindings
+        run: |
+          javac -d "$RUNNER_TEMP" Android/app/src/main/java/com/twoshipfork/mm/{TouchBindings,TouchLayout}.java tests/android_touch_hud/TouchLayoutCheck.java
+          java -cp "$RUNNER_TEMP" com.twoshipfork.mm.TouchLayoutCheck
+
       - name: Install Android vcpkg dependencies
         env:
           VCPKG_ROOT: ${{ github.workspace }}/build/vcpkg

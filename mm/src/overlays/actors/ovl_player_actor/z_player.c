@@ -6424,6 +6424,10 @@ s32 Player_ActionHandler_12(Player* this, PlayState* play) {
         }
     } else if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->ledgeClimbType == PLAYER_LEDGE_CLIMB_1) &&
                (this->ledgeClimbDelayTimer >= 3)) {
+#ifdef __ANDROID__
+        extern int TwoShipCanTouchVault(void);
+        if (!TwoShipCanTouchVault()) return false;
+#endif
         f32 temp = (this->yDistToLedge * 0.08f) + 5.5f;
 
         func_80834DB8(this, &gPlayerAnim_link_normal_jump, temp, play);

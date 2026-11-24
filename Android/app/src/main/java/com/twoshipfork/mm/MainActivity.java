@@ -120,6 +120,7 @@ public class MainActivity extends SDLActivity{
     @Override
     protected void onResume() {
         super.onResume();
+        if (integrated != null) integrated.resume();
         applyImmersiveFullscreen();
     }
 
@@ -959,6 +960,102 @@ public class MainActivity extends SDLActivity{
     // Native method for setting joystick axis value
     public native void setAxis(int axis, short value);
 
+    private IntegratedTouchView integrated;
+    private int touchStyle;
+    native void integratedTouchButton(int mask, boolean down);
+    native void integratedTouchStick(int x, int y);
+    native void integratedTouchReset();
+    native int integratedTouchState();
+    private int[] savedTouchBindings(int mode) {
+        int[] actions = {1,2,6,7,8,5,3,9,4,12,13,14,15,11,0,16};
+        if (mode == 1) actions[TouchBindings.index("fairy")] = TouchBindings.NAVI;
+        if (mode == 2) {
+            actions[5]=0; actions[7]=0; actions[14]=0;
+            int where=preferences.getInt("GameCube Tatl location",0);
+            actions[where==0?14:where==1?7:5]=5;
+        }
+        for(int i=0;i<actions.length;i++) actions[i]=preferences.getInt(TouchBindings.preferenceKey(mode,i),actions[i]);
+        return actions;
+    }
+    int[] integratedTouchBindings(int mode) {
+        int[] actions = savedTouchBindings(mode);
+        if ((integratedTouchState() & 128)!=0) {
+            int[] notes={1,2,6,7,8,5,3,9,4,12,13,14,15,11,5,16};
+            for(int i=0;i<actions.length;i++) if(actions[i]==17) actions[i]=notes[i];
+        }
+        return actions;
+    }
+    void integratedMenuButton(int mask, boolean down) {
+        if ((integratedTouchState() & 1)==0) return;
+        int code=mask==0x8000?0:mask==0x4000?1:mask==0x800?11:mask==0x400?12:mask==0x200?13:mask==0x100?14:-1;
+        if(code>=0) setButton(code,down);
+    }
+    // The in-game settings page edits the same keys as previous Android builds.
+    private static final String[] TOUCH_OPTIONS = {"Size","Opacity","Floating right stick","Transparent sticks",
+            "GameCube C-stick mode","GameCube Tatl location"};
+    private static final int[] TOUCH_DEFAULTS = {1,2,1,0,2,0};
+    public int[] readTouchMenu(int style) {
+        int count = TouchBindings.KEYS.length;
+        int[] values = Arrays.copyOf(savedTouchBindings(style), count + TOUCH_OPTIONS.length);
+        for (int i=0; i<TOUCH_OPTIONS.length; i++)
+            values[count+i] = preferences.getInt(TOUCH_OPTIONS[i], TOUCH_DEFAULTS[i]);
+        return values;
+    }
+    public void writeTouchMenu(int style, int index, int value) {
+        if (style < 1 || style > 3) return;
+        SharedPreferences.Editor edit = preferences.edit();
+        int count = TouchBindings.KEYS.length;
+        if (index == -1) {
+            for (int i=0;i<count;i++) edit.remove(TouchBindings.preferenceKey(style,i));
+            if (style == 2) edit.remove("GameCube Tatl location");
+        } else if (index >= 0 && index < count-1) {
+            int[] before = savedTouchBindings(style);
+            int[] after = before.clone();
+            TouchBindings.assign(after,style,index,value);
+            for (int i=0; i<count-1; i++) if (before[i]!=after[i])
+                edit.putInt(TouchBindings.preferenceKey(style,i),after[i]);
+        } else if (index >= count && index < count+TOUCH_OPTIONS.length) {
+            if (index == count+5) {
+                int[] before = savedTouchBindings(style);
+                int destination = new int[]{14,7,5}[value];
+                for (int i=0; i<count-1; i++) {
+                    if (i != destination && before[i] == TouchBindings.NAVI)
+                        edit.putInt(TouchBindings.preferenceKey(style,i), before[destination] == TouchBindings.NAVI ? 0 : before[destination]);
+                }
+                edit.putInt(TouchBindings.preferenceKey(style,destination), TouchBindings.NAVI);
+            }
+            edit.putInt(TOUCH_OPTIONS[index-count], value);
+        } else return;
+        edit.apply();
+        runOnUiThread(this::applyTouchControlsVisibility);
+    }
+    native void integratedTouchLayout(float[] anchors, boolean active, boolean fairy);
+    native void integratedCamera(int x,int y);
+    private int touchCameraButtons;
+    void integratedLook(float x, float y, boolean active) {
+        if (touchStyle == 2) {
+            int scene = integratedTouchState();
+            int mode = preferences.getInt("GameCube C-stick mode",2);
+            boolean buttons = (scene & 128)==0 && (mode==0 || (mode==2 && (scene & 16)==0));
+            int next = !active || !buttons ? 0 : (x > .5f ? 1 : x < -.5f ? 2 : 0) | (y > .5f ? 4 : y < -.5f ? 8 : 0);
+            integratedTouchButton(touchCameraButtons & ~next,false);
+            integratedTouchButton(next & ~touchCameraButtons,true);
+            touchCameraButtons=next;
+            integratedCamera(active && !buttons ? Math.round(x*85) : 0, active && !buttons ? Math.round(-y*85) : 0);
+        } else if (touchStyle == 3) {
+            setAxis(2,(short)(active ? x*32767 : 0)); setAxis(3,(short)(active ? y*32767 : 0));
+        } else if (touchStyle == 1) {
+            integratedCamera(active ? Math.round(x*85) : 0, active ? Math.round(-y*85) : 0);
+        }
+    }
+    public void setIntegratedStyle(int style) { runOnUiThread(() -> {
+        if (integrated != null && touchStyle != style) integrated.suspend();
+        touchStyle=style; applyTouchControlsVisibility();
+        if (integrated != null) integrated.resume();
+    }); }
+    public void editIntegratedLayout() { runOnUiThread(() -> { if (integrated != null) integrated.startEditing(); }); }
+    @Override protected void onPause() { if (integrated != null) integrated.suspend(); super.onPause(); }
+    @Override public void onBackPressed() { if (integrated == null || !integrated.cancelEditing()) super.onBackPressed(); }
     private Button button1, button2, button3, button4;
     private Button buttonA, buttonB, buttonX, buttonY;
     private Button buttonDpadUp, buttonDpadDown, buttonDpadLeft, buttonDpadRight;
@@ -972,8 +1069,12 @@ public class MainActivity extends SDLActivity{
     private int rightStickPointerId = MotionEvent.INVALID_POINTER_ID;
     private float leftStickStartX;
     private float leftStickStartY;
-    private float leftStickFixedX = Float.NaN;
-    private float leftStickFixedY = Float.NaN;
+    private native int guiTouchMode(); // 0: gameplay, 1: menu, 2: popup
+    private boolean hitVisible(View v, MotionEvent event) {
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        return v != null && v.isShown() && v.getGlobalVisibleRect(bounds)
+            && bounds.contains((int)event.getRawX(), (int)event.getRawY());
+    }
     private float rightStickStartX;
     private float rightStickStartY;
 
@@ -997,7 +1098,28 @@ public class MainActivity extends SDLActivity{
         overlayView.setLayoutParams(layoutParams);
         // Add overlay view to the main layout (you may need to add it to a container like FrameLayout)
         ViewGroup view = (ViewGroup) contentView;
-        view.addView(overlayView);
+        // Decline the start of a GUI gesture so Android delivers the entire stream
+        // to the SDL surface below, including moves and release for menu sliders.
+        FrameLayout touchLayer = new FrameLayout(this) {
+            private boolean utilityGesture;
+            @Override public boolean dispatchTouchEvent(MotionEvent event) {
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    utilityGesture = false;
+                    int gui = guiTouchMode();
+                    if (gui == 2) return false;
+                    if (gui == 1 && (integrated == null || !integrated.isEditingLayout())) {
+                        if (hitVisible(buttonBack, event)) nativeGamepadBackPressed();
+                        else if (hitVisible(buttonToggle, event)) buttonToggle.performClick();
+                        else if (integrated == null || !integrated.tapMenuUtility(event.getX(),event.getY())) return false;
+                        utilityGesture = true;
+                    }
+                }
+                if (utilityGesture) return true;
+                return super.dispatchTouchEvent(event);
+            }
+        };
+        view.addView(touchLayer, new FrameLayout.LayoutParams(-1,-1));
+        touchLayer.addView(overlayView);
 
         buttonGroup = overlayView.findViewById(R.id.button_group);
 
@@ -1060,6 +1182,8 @@ public class MainActivity extends SDLActivity{
         setupFloatingJoystick(leftScreenArea);
         setupLookAround(rightScreenArea);
 
+        integrated = new IntegratedTouchView(this);
+        touchLayer.addView(integrated, new FrameLayout.LayoutParams(-1,-1));
         setupToggleButton(buttonToggle,buttonGroup);
         applyTouchLeftStickMode();
         applyTouchControlsVisibility();
@@ -1081,7 +1205,10 @@ public class MainActivity extends SDLActivity{
 
     public void setTouchLeftStickFloatingFromNative(boolean floating) {
         preferences.edit().putBoolean(PREF_TOUCH_LEFT_STICK_FLOATING, floating).apply();
-        runOnUiThread(this::applyTouchLeftStickMode);
+        runOnUiThread(() -> {
+            applyTouchLeftStickMode();
+            if (integrated != null) integrated.setFloatingLeft(floating);
+        });
     }
 
     private void applyTouchLeftStickMode() {
@@ -1089,11 +1216,12 @@ public class MainActivity extends SDLActivity{
             return;
         }
         boolean floating = preferences.getBoolean(PREF_TOUCH_LEFT_STICK_FLOATING, true);
-        if (!floating && !Float.isNaN(leftStickFixedX)) {
-            leftJoystick.setX(leftStickFixedX);
-            leftJoystick.setY(leftStickFixedY);
-            leftJoystickKnob.setX(leftJoystick.getWidth() / 2.0f - leftJoystickKnob.getWidth() / 2.0f);
-            leftJoystickKnob.setY(leftJoystick.getHeight() / 2.0f - leftJoystickKnob.getHeight() / 2.0f);
+        if (!floating) {
+            // Restore the XML bottom-left anchor and centered knob, even after a resize.
+            leftJoystick.setTranslationX(0);
+            leftJoystick.setTranslationY(0);
+            leftJoystickKnob.setTranslationX(0);
+            leftJoystickKnob.setTranslationY(0);
         }
         leftJoystick.setVisibility(floating ? View.INVISIBLE : View.VISIBLE);
     }
@@ -1163,7 +1291,10 @@ public class MainActivity extends SDLActivity{
         }
 
         boolean touchControlsDisabled = preferences.getBoolean(PREF_TOUCH_CONTROLS_DISABLED, false);
-        overlayView.setVisibility(touchControlsDisabled ? View.GONE : View.VISIBLE);
+        if (integrated != null) integrated.configure(touchStyle,!touchControlsDisabled,
+            preferences.getBoolean(PREF_TOUCH_LEFT_STICK_FLOATING,true),preferences.getInt("Floating right stick",1)!=0,
+            .75f+.25f*preferences.getInt("Size",1),new float[]{.15f,.35f,.55f,.75f,1f}[preferences.getInt("Opacity",2)],preferences.getInt("Transparent sticks",0)!=0);
+        overlayView.setVisibility(touchControlsDisabled || touchStyle != 0 ? View.GONE : View.VISIBLE);
 
         if (buttonGroup != null) {
             boolean controlsHidden = preferences.getBoolean(PREF_TOUCH_CONTROLS_HIDDEN, false);
@@ -1240,11 +1371,6 @@ public class MainActivity extends SDLActivity{
 
     private void setupFloatingJoystick(FrameLayout touchArea) {
         final float maxRadius = dpToPixels(51);
-        leftJoystick.post(() -> {
-            leftStickFixedX = leftJoystick.getX();
-            leftStickFixedY = leftJoystick.getY();
-            applyTouchLeftStickMode();
-        });
         touchArea.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -1282,6 +1408,8 @@ public class MainActivity extends SDLActivity{
                 case MotionEvent.ACTION_CANCEL:
                     setAxis(ControllerButtons.AXIS_LX, (short) 0);
                     setAxis(ControllerButtons.AXIS_LY, (short) 0);
+                    leftJoystickKnob.setTranslationX(0);
+                    leftJoystickKnob.setTranslationY(0);
                     if (preferences.getBoolean(PREF_TOUCH_LEFT_STICK_FLOATING, true)) {
                         leftJoystick.setVisibility(View.INVISIBLE);
                     }

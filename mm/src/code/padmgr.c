@@ -490,6 +490,10 @@ void PadMgr_UpdateInputs(void) {
             input->cur.err_no = pad->err_no;
         }
 
+#ifdef __ANDROID__
+        extern void TwoShipMergeTouch(OSContPad*);
+        if (i == 0) TwoShipMergeTouch(&input->cur);
+#endif
         // If opposed directions on the D-Pad are pressed at the same time, mask both out
         if ((input->cur.button & (BTN_DDOWN | BTN_DUP)) == (BTN_DDOWN | BTN_DUP)) {
             input->cur.button &= ~(BTN_DDOWN | BTN_DUP);

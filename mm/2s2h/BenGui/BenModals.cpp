@@ -17,7 +17,26 @@ std::vector<BenModal> modals;
 
 bool closePopup = false;
 
+#ifdef __ANDROID__
+#include <atomic>
+#include <jni.h>
+#include <ship/Context.h>
+#include <ship/window/Window.h>
+#include <ship/window/gui/Gui.h>
+
+enum TouchGuiMode { Gameplay, MenuOpen, PopupOpen };
+static std::atomic<int> touchGuiMode{Gameplay};
+extern "C" JNIEXPORT jint JNICALL Java_com_twoshipfork_mm_MainActivity_guiTouchMode(JNIEnv*, jobject) {
+    return touchGuiMode.load();
+}
+#endif
+
 void BenModalWindow::Draw() {
+#ifdef __ANDROID__
+    // This window is drawn in both the extractor's GUI-only loop and normal gameplay.
+    bool popup = !modals.empty() || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+    touchGuiMode = popup ? PopupOpen : Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetMenuOrMenubarVisible() ? MenuOpen : Gameplay;
+#endif
     if (!IsVisible()) {
         return;
     }

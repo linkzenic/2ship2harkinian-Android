@@ -254,7 +254,12 @@ void Map_Update(PlayState* play) {
     s16 floor;
     s32 pad2;
 
-    if ((play->pauseCtx.state <= PAUSE_STATE_OPENING_2) && (CHECK_BTN_ALL(controller->press.button, BTN_L)) &&
+    s32 toggleMap = CHECK_BTN_ALL(controller->press.button, BTN_L);
+#ifdef __ANDROID__
+    extern int TwoShipConsumeMapTap(void);
+    toggleMap |= TwoShipConsumeMapTap();
+#endif
+    if ((play->pauseCtx.state <= PAUSE_STATE_OPENING_2) && toggleMap &&
         !Play_InCsMode(play) && !MapDisp_IsMinimapToggleBlocked(play)) {
         if (GameInteractor_Should(VB_MINIMAP_TOGGLE, true)) {
             if (!R_MINIMAP_DISABLED) {

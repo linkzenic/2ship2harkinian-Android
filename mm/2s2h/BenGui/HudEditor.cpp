@@ -46,7 +46,26 @@ extern "C" void HudEditor_OverrideNextElementMode(HudEditorElementMode mode) {
     hudEditorOverrideNextElemMode = mode;
 }
 
+#ifdef __ANDROID__
+extern "C" int TwoShipTouchHudActive(void);
+#endif
+static bool IntegratedTouchCorners() {
+#ifdef __ANDROID__
+    if (hudEditorActiveElement != HUD_EDITOR_ELEMENT_MINIMAP && hudEditorActiveElement != HUD_EDITOR_ELEMENT_RUPEE_COUNTER) return false;
+    const auto& elem = hudEditorElements[hudEditorActiveElement];
+    int mode = CVarGetInteger(elem.modeCvar, HUD_EDITOR_ELEMENT_MODE_VANILLA);
+    return TwoShipTouchHudActive() && !CVarGetInteger("gSettings.TouchControls.NativeMapAndWallet",0) &&
+        CVarGetInteger("gSettings.TouchControls.Style",0)!=0 && !CVarGetInteger("gSettings.TouchControls.Disabled",0) &&
+        hudEditorOverrideNextElemMode == HUD_EDITOR_ELEMENT_MODE_NONE &&
+        (mode == HUD_EDITOR_ELEMENT_MODE_VANILLA || mode == (hudEditorActiveElement == HUD_EDITOR_ELEMENT_MINIMAP ?
+            HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT : HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT)) &&
+        CVarGetInteger(elem.xCvar,elem.defaultX)==elem.defaultX && CVarGetInteger(elem.yCvar,elem.defaultY)==elem.defaultY;
+#else
+    return false;
+#endif
+}
 extern "C" bool HudEditor_ShouldOverrideDraw() {
+    if (IntegratedTouchCorners()) return true;
     return hudEditorActiveElement != HUD_EDITOR_ELEMENT_NONE &&
            (hudEditorOverrideNextElemMode != HUD_EDITOR_ELEMENT_MODE_NONE
                 ? hudEditorOverrideNextElemMode
@@ -87,11 +106,42 @@ extern "C" void HudEditor_ModifyRectPosValuesFromBase(s16 baseX, s16 baseY, s16*
     *rectTop = baseY + (offsetFromBaseY * scale);
 }
 
+#ifdef __ANDROID__
+extern "C" void TwoShipWalletCenter(float* x, float* y);
+#endif
 void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
     f32 offsetFromBaseX = *rectLeft - hudEditorElements[hudEditorActiveElement].defaultX;
     f32 offsetFromBaseY = *rectTop - hudEditorElements[hudEditorActiveElement].defaultY;
     f32 scale = HudEditor_GetActiveElementScale();
 
+    if (IntegratedTouchCorners()) {
+#ifdef __ANDROID__
+        if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_RUPEE_COUNTER) {
+            float x, y;
+            TwoShipWalletCenter(&x, &y);
+            float left = OTRGetRectDimensionFromLeftEdge(0);
+            float width = OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) - left;
+            // The native anchor is the icon origin, not the center of the icon and digits.
+            *rectLeft = left + std::clamp(x * width, 20.f * scale, std::max(20.f * scale, width - 20.f * scale)) + (offsetFromBaseX - 18.f) * scale;
+            *rectTop = std::min(y * SCREEN_HEIGHT, SCREEN_HEIGHT - 10.f * scale) + (offsetFromBaseY - 7.f) * scale;
+            return;
+        }
+#endif
+        *rectLeft = (hudEditorActiveElement == HUD_EDITOR_ELEMENT_MINIMAP ?
+            OTRGetRectDimensionFromLeftEdge(85) : OTRGetRectDimensionFromRightEdge(268)) + offsetFromBaseX * scale;
+        // Keep the wallet level with the lower part of the map, with space below both.
+        int baseY = hudEditorElements[hudEditorActiveElement].defaultY;
+        if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_MINIMAP) {
+#ifdef __ANDROID__
+            float walletX, walletY;
+            TwoShipWalletCenter(&walletX, &walletY);
+            // The room texture includes transparent space beneath the drawn map.
+            baseY = std::min(walletY * SCREEN_HEIGHT, SCREEN_HEIGHT - 10.f * scale) + 27;
+#endif
+        }
+        *rectTop = baseY + offsetFromBaseY * scale;
+        return;
+    }
     *rectLeft = CVarGetInteger(hudEditorElements[hudEditorActiveElement].xCvar,
                                hudEditorElements[hudEditorActiveElement].defaultX) +
                 (offsetFromBaseX * scale);
