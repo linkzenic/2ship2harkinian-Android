@@ -1,11 +1,15 @@
-# 2 Ship 2 Harkinian Android
+# 2 Ship 2 Harkinian — Android and iOS
 
 Android port of 2 Ship 2 Harkinian, based on the HarbourMasters project and forked from Waterdish's original Android port.
 
 Original repository: [https://github.com/HarbourMasters/2ship2harkinian
 ](https://github.com/2ship2harkinian/2ship2harkinian)
 
-Current Android release: **v5.0.1-android.3**
+Current Android release: **v5.0.1-android.4**
+
+The iOS port is being tested from the shared source tree. iOS workflow artifacts are unsigned test builds, not releases. To preserve your data when updating on iPhone, sign with the same app identifier and signing setup; do not uninstall first.
+
+## Android
 
 Supported: Android 7+ with OpenGL ES 3.0+
 

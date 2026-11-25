@@ -1,7 +1,7 @@
 [submodule "libultraship"]
 	path = libultraship
 	url = https://github.com/linkzenic/libultraship.git
-	branch = touch-controls-test
+	branch = apple-mobile-integration
 [submodule "OTRExporter"]
 	path = OTRExporter
 	url = https://github.com/Jameriquiah/OTRExporter.git

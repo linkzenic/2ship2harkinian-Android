@@ -31,7 +31,7 @@ jobs:
             exit 1
           fi
 
-          if grep -R -I -E -i \
+          if grep -R -I -E -i -q \
               --exclude-dir=.git \
               --exclude='privacy-scan.yml' \
               --exclude='ios-release.yml' \

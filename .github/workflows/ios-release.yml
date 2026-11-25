@@ -2,6 +2,8 @@ name: Build unsigned iOS IPA
 
 on:
   workflow_dispatch:
+  push:
+    branches: [platform-integration]
 
 permissions:
   contents: read
@@ -12,21 +14,28 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: xcode-27
     timeout-minutes: 120
     env:
       TWO_SHIP_IOS_VERSION: 5.0.1
-      TWO_SHIP_IOS_BUILD_NUMBER: 2
+      TWO_SHIP_IOS_BUILD_NUMBER: 6
+      DEPLOYMENT_TARGET: '15.0'
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Show build tools
         run: |
           xcodebuild -version
           cmake --version
+
+      - name: Check iOS touch layouts
+        run: |
+          clang++ -std=c++20 -Wall -Wextra -Werror tests/ios_touch_hud/TouchLayoutCheck.cpp -o "$RUNNER_TEMP/ios-touch-check"
+          "$RUNNER_TEMP/ios-touch-check"
 
       - name: Install archive generator prerequisite
         run: brew install sdl2 glew libzip nlohmann-json tinyxml2 spdlog
@@ -51,14 +60,13 @@ jobs:
         run: |
           set -euo pipefail
           test -f dist/2Ship-2-Harkinian-iOS-unsigned.ipa
-          if unzip -l dist/2Ship-2-Harkinian-iOS-unsigned.ipa | grep -E '(_CodeSignature|embedded\.mobileprovision)'; then
-            echo "Signed material found in public artifact."
+          entries="$(unzip -Z1 dist/2Ship-2-Harkinian-iOS-unsigned.ipa)"
+          grep -F '/2ship.o2r' <<< "$entries" >/dev/null
+          if grep -Eq '(_CodeSignature|embedded\.mobileprovision|/mm\.o2r$)' <<< "$entries"; then
+            echo "Unexpected signing or game data found in the artifact."
             exit 1
           fi
-          if strings dist/2Ship-2-Harkinian-iOS-unsigned.ipa | grep -E -i '(/Users/)'; then
-            echo "Private build metadata found in public artifact."
-            exit 1
-          fi
+          # The packaging script scans uncompressed files for local user paths.
 
       - uses: actions/upload-artifact@v4
         with:
