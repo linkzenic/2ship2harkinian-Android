@@ -1,5 +1,14 @@
 include(FetchContent)
 
+# Apply the Apple scene fix to the same SDL2 revision used by libultraship.
+FetchContent_Declare(SDL2
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-2.32.10
+    PATCH_COMMAND ${CMAKE_COMMAND}
+        -Dpatch_file=${CMAKE_CURRENT_LIST_DIR}/patches/sdl2-apple-scenes.patch
+        -P ${CMAKE_SOURCE_DIR}/libultraship/cmake/dependencies/git-patch.cmake
+    OVERRIDE_FIND_PACKAGE)
+
 # CoreMotion's sensor API is unavailable in the tvOS SDK. SDL otherwise
 # enables that backend for every Apple mobile target and fails to compile.
 if(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
