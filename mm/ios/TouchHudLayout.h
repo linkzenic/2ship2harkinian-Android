@@ -73,8 +73,9 @@ struct Layout {
             float s=p==placement.positions.end()?1:p->second[2];
             const bool footer = FooterControl(style,key);
             float adjust=style==3&&footer?4*unit:0;
-            const float floor = footer ? safe[3]+2*unit : bottom-adjust;
-            if (footer) { bh=24; y=1; }
+            const bool defaultFooter = footer && p==placement.positions.end();
+            const float floor = footer ? safe[3]+(defaultFooter?0.f:2*unit) : bottom-adjust;
+            if (footer) { bh=defaultFooter?22:24; y=1; }
             float ww=std::min(bw*unit*s,w-left-right+2*adjust),hh=std::min(bh*unit*s,h-top+adjust-floor);
             float cx=p==placement.positions.end()?x*w:p->second[0]*w,cy=p==placement.positions.end()?y*h:p->second[1]*h;
             cx=std::clamp(cx,left-adjust+ww/2,w-right+adjust-ww/2);

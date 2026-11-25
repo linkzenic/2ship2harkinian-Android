@@ -23,6 +23,7 @@ Gfx* Gfx_DrawTexRectIA8_DropShadowOffset(Gfx* gfx, TexturePtr texture, s16 textu
 }
 
 #if defined(__IOS__) && !defined(__TVOS__)
+#include <cmath>
 extern "C" int TwoShipTouchHudActive(void);
 float TwoShipTouchFooterTop();
 #endif
@@ -84,11 +85,23 @@ void Draw3DSClock() {
             s16 posX = 160;
             s16 posY = 210;
 #if defined(__IOS__) && !defined(__TVOS__)
-            if (TwoShipTouchHudActive() && !HudEditor_ShouldOverrideDraw()) {
-                // Leave space for the touch footer above the home indicator.
-                const s16 footerY = TwoShipTouchFooterTop() * SCREEN_HEIGHT;
-                if (footerY < posY + 15) {
-                    posY = footerY - 15;
+            const auto& clock = hudEditorElements[HUD_EDITOR_ELEMENT_CLOCK];
+            const bool movable = HudEditor_ShouldOverrideDraw();
+            const bool defaultPosition =
+                CVarGetInteger(clock.xCvar, clock.defaultX) == clock.defaultX &&
+                CVarGetInteger(clock.yCvar, clock.defaultY) == clock.defaultY;
+            if (TwoShipTouchHudActive() && (!movable || defaultPosition)) {
+                // Test the clock's drawn edge, including the centered HUD preset's scale.
+                constexpr s16 clockHeight = 12;
+                constexpr s16 footerGap = 6;
+                s16 clockX = posX, clockBottom = posY + clockHeight;
+                const float scale = movable ? HudEditor_GetActiveElementScale() : 1.0f;
+                if (movable) {
+                    HudEditor_ModifyRectPosValues(&clockX, &clockBottom);
+                }
+                const float overlap = clockBottom + footerGap - TwoShipTouchFooterTop() * SCREEN_HEIGHT;
+                if (overlap > 0 && scale > 0) {
+                    posY -= static_cast<s16>(std::ceil(overlap / scale));
                 }
             }
 #endif

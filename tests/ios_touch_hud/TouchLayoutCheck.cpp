@@ -25,7 +25,7 @@ int main() {
         assert(map->bounds.cy()==fairy->bounds.cy());
         assert(map->bounds.cy()>h*.9f);
         assert(std::abs((map->bounds.cx()+fairy->bounds.cx())*.5f-w*.5f)<.001f);
-        assert(map->bounds.y+map->bounds.h<=h-safe[3]);
+        assert(std::abs(map->bounds.y+map->bounds.h-(h-safe[3]))<.001f);
         layout.build(style,w,h,safe,1,32|64,false,true,placement,bindings);
         assert(layout.find(style==3?"cu":"fairy")->mask==8);
         layout.build(style,w,h,safe,1,32,false,false,placement,bindings);

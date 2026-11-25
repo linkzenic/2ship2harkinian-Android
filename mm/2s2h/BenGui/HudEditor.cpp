@@ -132,6 +132,9 @@ void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
         // Keep the wallet level with the lower part of the map, with space below both.
         int baseY = hudEditorElements[hudEditorActiveElement].defaultY;
         if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_MINIMAP) {
+#if defined(__IOS__) && !defined(__TVOS__)
+            *rectLeft += 2.f;
+#endif
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
             float walletX, walletY;
             TwoShipWalletCenter(&walletX, &walletY);
