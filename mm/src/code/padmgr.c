@@ -490,7 +490,7 @@ void PadMgr_UpdateInputs(void) {
             input->cur.err_no = pad->err_no;
         }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         extern void TwoShipMergeTouch(OSContPad*);
         if (i == 0) TwoShipMergeTouch(&input->cur);
 #endif

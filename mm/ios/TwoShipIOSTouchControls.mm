@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "TwoShipIOSTouchControls.h"
+#include "TwoShipIntegratedTouchControls.h"
 
 namespace {
 
@@ -633,12 +634,15 @@ static void ApplyState() {
                        dispatch_get_main_queue(), ^{ ApplyState(); });
         return;
     }
-    if (!sControlsDesired) {
+    const bool integrated = sControlsDesired && TwoShipIOS_IntegratedTouchStyle() != 0;
+    if (!sControlsDesired || integrated) {
         [sOverlay cancelInputs];
         [sOverlay removeFromSuperview];
         sOverlay = nil;
+        TwoShipIOS_ApplyIntegratedTouch((__bridge void*)window, integrated, sMenuVisible.load());
         return;
     }
+    TwoShipIOS_ApplyIntegratedTouch((__bridge void*)window, 0, 0);
     if (sOverlay == nil) {
         sOverlay = [[TwoShipTouchOverlay alloc] initWithFrame:window.bounds];
         sOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -654,6 +658,9 @@ static void ApplyState() {
     [sOverlay setMenuVisible:sMenuVisible.load()];
     [window bringSubviewToFront:sOverlay];
 }
+
+void TwoShipIOS_RefreshOverlay() { ApplyState(); }
+void TwoShipIOS_RequestMenuToggle() { sMenuToggleRequested.store(true); }
 
 void TwoShipIOS_SetTouchControlsEnabled(int enabled) {
     dispatch_async(dispatch_get_main_queue(), ^{

@@ -6424,7 +6424,7 @@ s32 Player_ActionHandler_12(Player* this, PlayState* play) {
         }
     } else if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->ledgeClimbType == PLAYER_LEDGE_CLIMB_1) &&
                (this->ledgeClimbDelayTimer >= 3)) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         extern int TwoShipCanTouchVault(void);
         if (!TwoShipCanTouchVault()) return false;
 #endif

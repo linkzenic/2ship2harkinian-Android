@@ -46,11 +46,11 @@ extern "C" void HudEditor_OverrideNextElementMode(HudEditorElementMode mode) {
     hudEditorOverrideNextElemMode = mode;
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 extern "C" int TwoShipTouchHudActive(void);
 #endif
 static bool IntegratedTouchCorners() {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     if (hudEditorActiveElement != HUD_EDITOR_ELEMENT_MINIMAP && hudEditorActiveElement != HUD_EDITOR_ELEMENT_RUPEE_COUNTER) return false;
     const auto& elem = hudEditorElements[hudEditorActiveElement];
     int mode = CVarGetInteger(elem.modeCvar, HUD_EDITOR_ELEMENT_MODE_VANILLA);
@@ -106,7 +106,7 @@ extern "C" void HudEditor_ModifyRectPosValuesFromBase(s16 baseX, s16 baseY, s16*
     *rectTop = baseY + (offsetFromBaseY * scale);
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 extern "C" void TwoShipWalletCenter(float* x, float* y);
 #endif
 void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
@@ -115,7 +115,7 @@ void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
     f32 scale = HudEditor_GetActiveElementScale();
 
     if (IntegratedTouchCorners()) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_RUPEE_COUNTER) {
             float x, y;
             TwoShipWalletCenter(&x, &y);
@@ -132,7 +132,7 @@ void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
         // Keep the wallet level with the lower part of the map, with space below both.
         int baseY = hudEditorElements[hudEditorActiveElement].defaultY;
         if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_MINIMAP) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
             float walletX, walletY;
             TwoShipWalletCenter(&walletX, &walletY);
             // The room texture includes transparent space beneath the drawn map.

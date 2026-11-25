@@ -5874,7 +5874,7 @@ void Interface_SetOrthoView(InterfaceContext* interfaceCtx) {
 }
 
 void Interface_DrawItemButtons(PlayState* play) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     extern int TwoShipTouchHudActive(void);
     if (TwoShipTouchHudActive()) return;
 #endif
@@ -6110,7 +6110,7 @@ s16 sDpadItemIconTop[] = {
     47, // EQUIP_SLOT_D_UP
 };
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 extern int TwoShipTouchRect(int slot,float* x,float* y,float* size);
 static int Interface_DrawTouchIcon(PlayState* play, TexturePtr texture, int slot) {
     float x,y,size;
@@ -6127,7 +6127,7 @@ static int Interface_DrawTouchIcon(PlayState* play, TexturePtr texture, int slot
     return 1;
 }
 #endif
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 static int Interface_DrawTouchAmmo(PlayState* play,int slot,int tens,int ones) {
     float x,y,s;
     int visible=TwoShipTouchRect(slot,&x,&y,&s);
@@ -6146,7 +6146,7 @@ static int Interface_DrawTouchAmmo(PlayState* play,int slot,int tens,int ones) {
 }
 #endif
 void Interface_Dpad_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16 button) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     static const int slots[]={7,6,5,4};
     if ((unsigned)button<4 && Interface_DrawTouchIcon(play,texture,slots[button])) return;
 #endif
@@ -6251,7 +6251,7 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
             ammo -= 10;
         }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (!Interface_DrawTouchAmmo(play,7-button,i,ammo))
 #endif
         {
@@ -6274,7 +6274,7 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
 // #endregion
 
 void Interface_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16 button) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     if ((unsigned)button<4 && Interface_DrawTouchIcon(play,texture,button)) return;
 #endif
     static s16 sItemIconTextureDimensions[] = {
@@ -6385,7 +6385,7 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
             ammo -= 10;
         }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (!Interface_DrawTouchAmmo(play,button,i,ammo))
 #endif
         {
@@ -6409,7 +6409,7 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 // The B action text (Punch, etc.) is a different draw path from the B item icon.
 static int Interface_DrawTouchBAction(PlayState* play) {
     float x, y, size;
@@ -6488,7 +6488,7 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                                DO_ACTION_TEX_WIDTH, DO_ACTION_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
 #endif
         sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
@@ -6537,7 +6537,7 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                                DO_ACTION_TEX_WIDTH, DO_ACTION_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
 #endif
         sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
@@ -6574,7 +6574,7 @@ void Interface_DrawBButtonIcons(PlayState* play) {
         }
     }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 bActionDrawn:
 #endif
     CLOSE_DISPS(play->state.gfxCtx);
@@ -6699,7 +6699,7 @@ void Interface_DrawAButton(PlayState* play) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     s16 aAlpha;
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     float tx,ty,ts;
     int touchAction=TwoShipTouchRect(9,&tx,&ty,&ts);
     if (touchAction) {

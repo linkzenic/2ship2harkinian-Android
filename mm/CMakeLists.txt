@@ -116,7 +116,17 @@ if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
         list(APPEND ship__
             ios/TwoShipIOSTouchControls.h
             ios/TwoShipIOSTouchControls.mm
+            ios/TwoShipIntegratedTouchControls.mm
         )
+        set(TOUCH_FONTS_DIR "${CMAKE_SOURCE_DIR}/Android/app/src/main/assets/fonts")
+        set(TOUCH_FONTS
+            "${TOUCH_FONTS_DIR}/FiraSansCondensed-Bold.ttf"
+            "${TOUCH_FONTS_DIR}/MaterialSymbolsRounded-Regular.ttf"
+            "${TOUCH_FONTS_DIR}/LICENSE-MaterialSymbols.txt"
+            "${TOUCH_FONTS_DIR}/OFL.txt"
+        )
+        list(APPEND ship__ ${TOUCH_FONTS})
+        set_source_files_properties(${TOUCH_FONTS} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/fonts")
     endif()
     set_source_files_properties(ios/Assets.xcassets PROPERTIES
         MACOSX_PACKAGE_LOCATION Resources
@@ -251,6 +261,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
     if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
         target_compile_definitions(${PROJECT_NAME} PRIVATE "__TVOS__")
         target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Network" "-framework UIKit")
+    else()
+        target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreText")
     endif()
     if(NOT SIGN_LIBRARY)
         set_target_properties(${PROJECT_NAME} PROPERTIES

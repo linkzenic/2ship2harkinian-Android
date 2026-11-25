@@ -1,4 +1,4 @@
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 extern "C" int TwoShipCameraAxis(int fallback,int vertical);
 #endif
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -39,9 +39,13 @@ static void GetFreeLookStick(int8_t* x, int8_t* y) {
     *x = TwoShipCameraAxis(*x, 0);
     *y = TwoShipCameraAxis(*y, 1);
 #elif defined(__IOS__) && !defined(__TVOS__)
-    // Read the active UIKit stick directly so free look is not dependent on
-    // the SDL/game-thread polling cadence.
-    TwoShipIOS_GetCurrentRightStick(x, y);
+    if (CVarGetInteger("gSettings.TouchControls.Style", 0) == 0) {
+        // Classic retains its original UIKit stick path.
+        TwoShipIOS_GetCurrentRightStick(x, y);
+    } else {
+        *x = TwoShipCameraAxis(*x, 0);
+        *y = TwoShipCameraAxis(*y, 1);
+    }
 #endif
 }
 

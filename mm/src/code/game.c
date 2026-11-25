@@ -149,7 +149,7 @@ void GameState_DrawEnd(GraphicsContext* gfxCtx) {
 }
 
 void GameState_GetInput(GameState* gameState) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     extern void TwoShipRefreshTouch(void);
     TwoShipRefreshTouch();
 #endif

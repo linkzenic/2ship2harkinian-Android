@@ -255,7 +255,7 @@ void Map_Update(PlayState* play) {
     s32 pad2;
 
     s32 toggleMap = CHECK_BTN_ALL(controller->press.button, BTN_L);
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     extern int TwoShipConsumeMapTap(void);
     toggleMap |= TwoShipConsumeMapTap();
 #endif

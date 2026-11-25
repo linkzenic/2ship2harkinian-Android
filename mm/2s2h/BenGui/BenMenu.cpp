@@ -36,6 +36,7 @@
 #endif
 #if defined(__IOS__) && !defined(__TVOS__)
 #include "ios/TwoShipIOSTouchControls.h"
+#include "ios/TwoShipIntegratedTouchControls.h"
 #endif
 
 #if defined(__IOS__) && !defined(__TVOS__)
@@ -100,32 +101,35 @@ static void ApplyAndroidMenuScale(float scale) {
     ImGui::GetIO().FontGlobalScale = scale;
 }
 
+#endif
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 #include <atomic>
-static std::atomic<unsigned> touchButtons{0}, touchStick{0}, touchPending{0};
+#include <mutex>
+static std::atomic<unsigned> touchButtons{0}, touchStick{0}, touchPending{0}, touchRight{0};
 static std::atomic<bool> touchMapRequested{false};
 extern "C" int TwoShipConsumeMapTap(void) { return touchMapRequested.exchange(false); }
-extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchButton(JNIEnv*, jobject, jint m, jboolean down) {
+void TwoShipIntegratedButton(unsigned m, bool down) {
     if (m == 0x10000) {
         if (down) touchMapRequested = true;
         return;
     }
     if (down) { touchButtons.fetch_or(m); touchPending.fetch_or(m); } else touchButtons.fetch_and(~m);
 }
-extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchStick(JNIEnv*, jobject, jint x, jint y) {
+void TwoShipIntegratedStick(int x,int y) {
     touchStick.store((x & 255) | ((y & 255) << 8));
 }
-extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchReset(JNIEnv*, jobject) {
+void TwoShipIntegratedReset() {
     touchButtons.store(0); touchStick.store(0); touchPending.store(0);
     touchMapRequested = false;
+    touchRight.store(0);
 }
-static std::atomic<unsigned> touchRight{0};
 static std::atomic<bool> touchManualJumpHeld{false};
 extern "C" int TwoShipCanTouchVault(void) {
     return touchManualJumpHeld || !CVarGetInteger("gSettings.TouchControls.Style",0) ||
         !CVarGetInteger("gEnhancements.Player.ManualJump",0) ||
         !CVarGetInteger("gSettings.TouchControls.ManualVault",0) || !touchStick.load();
 }
-extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedCamera(JNIEnv*,jobject,jint x,jint y) {
+void TwoShipIntegratedCamera(int x,int y) {
     touchRight.store((x&255)|((y&255)<<8));
 }
 static std::atomic<int> touchScene{0}, touchContent{0};
@@ -138,10 +142,9 @@ extern "C" void TwoShipWalletCenter(float* x, float* y) {
 }
 static std::atomic<bool> touchActive{false};
 extern "C" int TwoShipTouchHudActive(void) { return touchActive.load(); }
-extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchLayout(JNIEnv* env,jobject,jfloatArray values,jboolean active,jboolean) {
-    if (!values || env->GetArrayLength(values)!=32) return;
+void TwoShipIntegratedLayout(const float* values,bool active) {
     std::lock_guard<std::mutex> guard(touchLayoutLock);
-    env->GetFloatArrayRegion(values,0,32,touchAnchors);
+    if (values) std::copy_n(values,32,touchAnchors);
     touchActive=active;
 }
 extern "C" int TwoShipTouchRect(int slot,float* x,float* y,float* size) {
@@ -152,7 +155,7 @@ extern "C" int TwoShipTouchRect(int slot,float* x,float* y,float* size) {
     touchContent.fetch_or(1 << (8+slot));
     return *size>0 ? 1 : -1;
 }
-extern "C" JNIEXPORT jint JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchState(JNIEnv*, jobject) { return touchScene.load(); }
+int TwoShipIntegratedState() { return touchScene.load(); }
 extern "C" void TwoShipRefreshTouch(void) {
     if (!CVarGetInteger("gSettings.TouchControls.Style",0)) { touchScene.store(0); return; }
     auto context=Ship::Context::GetRawInstance();
@@ -174,7 +177,12 @@ extern "C" void TwoShipMergeTouch(OSContPad* pad) {
     bool playing=(scene&128)!=0;
     unsigned b = touchButtons.load() | touchPending.exchange(0), s = touchStick.load();
     unsigned right=touchRight.load();
-    if (right && playing && CVarGetInteger("gSettings.TouchControls.Style",0)==2) {
+    const int style=CVarGetInteger("gSettings.TouchControls.Style",0);
+    if (right && ((playing && style==2)
+#if defined(__IOS__)
+                  || style==3
+#endif
+                  )) {
         pad->right_stick_x=(int8_t)right; pad->right_stick_y=(int8_t)(right>>8);
     }
     touchManualJumpHeld = (b & 0x01000000) != 0 && CVarGetInteger("gEnhancements.Player.ManualJump",0);
@@ -190,6 +198,18 @@ extern "C" void TwoShipMergeTouch(OSContPad* pad) {
     }
     pad->button |= (b & 65535) | ((b & 0x20000) ? BTN_CUP : 0);
     if (s) { pad->stick_x = (int8_t)s; pad->stick_y = (int8_t)(s >> 8); }
+}
+#if defined(__ANDROID__)
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchButton(JNIEnv*,jobject,jint m,jboolean down) { TwoShipIntegratedButton(m,down); }
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchStick(JNIEnv*,jobject,jint x,jint y) { TwoShipIntegratedStick(x,y); }
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchReset(JNIEnv*,jobject) { TwoShipIntegratedReset(); }
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedCamera(JNIEnv*,jobject,jint x,jint y) { TwoShipIntegratedCamera(x,y); }
+extern "C" JNIEXPORT jint JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchState(JNIEnv*,jobject) { return TwoShipIntegratedState(); }
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchLayout(JNIEnv* env,jobject,jfloatArray values,jboolean active,jboolean) {
+    if (!values || env->GetArrayLength(values)!=32) return;
+    float anchors[32];
+    env->GetFloatArrayRegion(values,0,32,anchors);
+    TwoShipIntegratedLayout(anchors,active);
 }
 static void IntegratedTouchMenu(bool edit) {
     auto env = (JNIEnv*)SDL_AndroidGetJNIEnv();
@@ -225,6 +245,9 @@ static bool SyncTouchMenu(int style, int index = -2, int value = 0) {
     env->DeleteLocalRef(activity);
     return valid;
 }
+#else
+#include "ios/TwoShipTouchMenu.inc"
+#endif
 static const char* const gameCubeButtons[] = {"A","B","Y","Z","X","C-up","L","Extra","R","D-pad up","D-pad down","D-pad left","D-pad right","Start","Fairy (Tatl)"};
 static std::string GameCubeTatlPreview() {
     std::string buttons;
@@ -307,7 +330,8 @@ static void DrawTouchAssignments(WidgetInfo&) {
     if (ImGui::Button(reset.c_str()))
         BenGui::RegisterPopup(reset,"Restore this layout's default touch assignments? Button positions, other layouts and physical bindings will not change.","Reset","Cancel",[style](){ SyncTouchMenu(style,-1); });
 }
-static void SetAndroidTouchControlsDisabled(bool disabled) {
+#if defined(__ANDROID__)
+static void SetMobileTouchControlsDisabled(bool disabled) {
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     jobject activity = (jobject)SDL_AndroidGetActivity();
     if (env == nullptr || activity == nullptr) {
@@ -327,7 +351,7 @@ static void SetAndroidTouchControlsDisabled(bool disabled) {
     env->DeleteLocalRef(activityClass);
 }
 
-static void SetAndroidTouchFaceButtonLayout(int32_t layout) {
+static void SetMobileTouchFaceButtonLayout(int32_t layout) {
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     jobject activity = (jobject)SDL_AndroidGetActivity();
     if (env == nullptr || activity == nullptr) {
@@ -345,7 +369,7 @@ static void SetAndroidTouchFaceButtonLayout(int32_t layout) {
     }
 }
 
-static void SetAndroidTouchLeftStickFloating(bool floating) {
+static void SetMobileTouchLeftStickFloating(bool floating) {
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     jobject activity = (jobject)SDL_AndroidGetActivity();
     if (env == nullptr || activity == nullptr) {
@@ -361,6 +385,12 @@ static void SetAndroidTouchLeftStickFloating(bool floating) {
         env->DeleteLocalRef(activityClass);
     }
 }
+#endif
+#endif
+#if defined(__IOS__) && !defined(__TVOS__)
+static void SetMobileTouchControlsDisabled(bool disabled) { SetIOSTouchControlsDisabled(disabled); }
+static void SetMobileTouchLeftStickFloating(bool floating) { SetIOSTouchLeftStickFloating(floating); IntegratedTouchMenu(false); }
+static void SetMobileTouchFaceButtonLayout(int layout) { SetIOSTouchFaceButtonLayout(layout); }
 #endif
 
 #if defined(__ANDROID__)
@@ -1091,38 +1121,6 @@ void BenMenu::AddSettings() {
         .CVar("gWindows.BenInputEditor")
         .WindowName("2S2H Input Editor")
         .Options(ButtonOptions().Tooltip("Enables the separate Bindings Window.").Size(Sizes::Inline));
-#if defined(__IOS__) && !defined(__TVOS__)
-    path.sidebarName = "Touch Controls";
-    path.column = SECTION_COLUMN_1;
-    AddSidebarEntry("Settings", "Touch Controls", 2);
-    AddWidget(path, "Touch Face Buttons", WIDGET_CVAR_COMBOBOX)
-        .CVar("gSettings.TouchControls.FaceButtonLayout")
-        .Callback([](WidgetInfo& info) {
-            SetIOSTouchFaceButtonLayout(CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
-        })
-        .Options(ComboboxOptions()
-                     .ComboMap(&touchFaceButtonLayoutMap)
-                     .DefaultIndex(0)
-                     .Tooltip("Choose Nintendo, Xbox, or GameCube touch-button placement."));
-    SetIOSTouchFaceButtonLayout(CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
-    AddWidget(path, "Floating Left Stick", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.TouchControls.FloatingLeftStick")
-        .Callback([](WidgetInfo& info) {
-            SetIOSTouchLeftStickFloating(
-                CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
-        })
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "When disabled, the left touch stick stays fixed in the lower-left corner."));
-    SetIOSTouchLeftStickFloating(
-        CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
-    AddWidget(path, "Disable Touch Controls", WIDGET_CVAR_CHECKBOX)
-        .CVar("gSettings.TouchControls.Disabled")
-        .Callback([](WidgetInfo& info) {
-            SetIOSTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
-        })
-        .Options(CheckboxOptions().Tooltip("Hides the on-screen touch controls."));
-    SetIOSTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
-#endif
 #if defined(__TVOS__)
     AddWidget(path, "Apple Controller Diagnostics", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Native Controller Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
@@ -1134,7 +1132,7 @@ void BenMenu::AddSettings() {
     });
 #endif
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     path.sidebarName = "Touch Controls";
     path.column = SECTION_COLUMN_1;
     AddSidebarEntry("Settings", "Touch Controls", 2);
@@ -1150,12 +1148,12 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Floating Left Stick", WIDGET_CVAR_CHECKBOX)
         .CVar("gSettings.TouchControls.FloatingLeftStick")
         .Callback([](WidgetInfo& info) {
-            SetAndroidTouchLeftStickFloating(
+            SetMobileTouchLeftStickFloating(
                 CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
         })
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
             "When disabled, the left touch stick stays fixed in the lower-left corner."));
-    SetAndroidTouchLeftStickFloating(
+    SetMobileTouchLeftStickFloating(
         CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
     AddWidget(path,"Touch Appearance and Sticks",WIDGET_CUSTOM).PreFunc(integratedOnly).CustomFunction(DrawTouchOptions);
     AddWidget(path,"Keep Native Minimap and Rupee Positions",WIDGET_CVAR_CHECKBOX)
@@ -1177,21 +1175,21 @@ void BenMenu::AddSettings() {
         .PreFunc([](WidgetInfo& info){ info.isHidden = CVarGetInteger("gSettings.TouchControls.Style",0)!=0; })
         .CVar("gSettings.TouchControls.FaceButtonLayout")
         .Callback([](WidgetInfo& info) {
-            SetAndroidTouchFaceButtonLayout(
+            SetMobileTouchFaceButtonLayout(
                 CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
         })
         .Options(ComboboxOptions()
                      .ComboMap(&touchFaceButtonLayoutMap)
                      .DefaultIndex(0)
                      .Tooltip("Choose ABXY (Nintendo), BAYX (Xbox), or GC Layout touch-button placement."));
-    SetAndroidTouchFaceButtonLayout(
+    SetMobileTouchFaceButtonLayout(
         CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
     AddWidget(path, "Disable Touch Controls", WIDGET_CVAR_CHECKBOX)
         .CVar("gSettings.TouchControls.Disabled")
         .Callback([](WidgetInfo& info) {
-            SetAndroidTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
+            SetMobileTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
         })
-        .Options(CheckboxOptions().Tooltip("Hides the Android touch controls and eye button."));
+        .Options(CheckboxOptions().Tooltip("Hides the on-screen touch controls and eye button."));
     path.column = SECTION_COLUMN_2;
     AddWidget(path,"Touch Button Assignments",WIDGET_SEPARATOR_TEXT).PreFunc(integratedOnly);
     AddWidget(path,"Assign Touch Buttons",WIDGET_CUSTOM).PreFunc(integratedOnly).CustomFunction(DrawTouchAssignments);
