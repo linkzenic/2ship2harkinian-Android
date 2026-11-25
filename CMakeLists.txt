@@ -1,7 +1,29 @@
 cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
+    if(PLATFORM STREQUAL "SIMULATORARM64")
+        set(CMAKE_OSX_SYSROOT "iphonesimulator" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    elseif(PLATFORM STREQUAL "SIMULATORARM64_TVOS")
+        set(CMAKE_OSX_SYSROOT "appletvsimulator" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    elseif(PLATFORM STREQUAL "TVOS")
+        set(CMAKE_OSX_SYSROOT "appletvos" CACHE STRING "" FORCE)
+        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+    endif()
+    # Do not embed the build machine's local checkout paths in public binaries.
+    add_compile_options(
+        "-ffile-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-ffile-prefix-map=${CMAKE_BINARY_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=."
+        "-fdebug-prefix-map=${CMAKE_BINARY_DIR}=."
+    )
+else()
+    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+endif()
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
+option(BUILD_ARCHIVE_GENERATOR_ONLY "Build only the native 2ship.o2r generator" OFF)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 set(GAME_STR "MM")
@@ -77,8 +99,18 @@ set(GBI_UCODE F3DEX_GBI_2)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 
-# Enable MPQ and OTR support
-set(INCLUDE_MPQ_SUPPORT ON)
+# Dependencies not supplied by the iOS SDK.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    include(CMake/ios.cmake)
+endif()
+
+# Apple releases use OTR/O2R archives and do not need StormLib's MPQ support.
+# Keeping it disabled also avoids shipping an unused dependency.
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(INCLUDE_MPQ_SUPPORT OFF)
+elseif(NOT DEFINED INCLUDE_MPQ_SUPPORT)
+    set(INCLUDE_MPQ_SUPPORT ON)
+endif()
 
 ################################################################################
 # Set target arch type if empty. Visual studio solution generator provides it.
@@ -166,19 +198,40 @@ include(CMake/GlobalSettingsInclude.cmake OPTIONAL)
 ################################################################################
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-################################################################################
-# Set CONTROLLERBUTTONS_T
-################################################################################
 add_compile_definitions(CONTROLLERBUTTONS_T=uint32_t)
 
 ################################################################################
 # Sub-projects
 ################################################################################
 add_subdirectory(libultraship ${CMAKE_BINARY_DIR}/libultraship)
-target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
+if(CMAKE_SYSTEM_NAME STREQUAL "tvOS" AND TARGET SDL2-static)
+    # The shared Apple toolchain also sets SDL's IOS compatibility variable,
+    # which makes SDL publish CoreMotion even though tvOS does not provide it.
+    get_target_property(TWO_SHIP_SDL_LINK_LIBRARIES SDL2-static LINK_LIBRARIES)
+    if(TWO_SHIP_SDL_LINK_LIBRARIES)
+        list(FILTER TWO_SHIP_SDL_LINK_LIBRARIES EXCLUDE REGEX "[Cc]ore[Mm]otion")
+        set_property(TARGET SDL2-static PROPERTY LINK_LIBRARIES "${TWO_SHIP_SDL_LINK_LIBRARIES}")
+    endif()
+    get_target_property(TWO_SHIP_SDL_INTERFACE_LIBRARIES SDL2-static INTERFACE_LINK_LIBRARIES)
+    if(TWO_SHIP_SDL_INTERFACE_LIBRARIES)
+        list(FILTER TWO_SHIP_SDL_INTERFACE_LIBRARIES EXCLUDE REGEX "[Cc]ore[Mm]otion")
+        set_property(TARGET SDL2-static PROPERTY INTERFACE_LINK_LIBRARIES "${TWO_SHIP_SDL_INTERFACE_LIBRARIES}")
+    endif()
+endif()
+if(INCLUDE_MPQ_SUPPORT)
+    target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
+endif()
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    target_compile_definitions(libultraship PRIVATE __IOS__)
+    target_sources(libultraship PRIVATE
+        "${CMAKE_SOURCE_DIR}/libultraship/src/ship/audio/CoreAudioAudioPlayer.cpp"
+    )
+endif()
+
 # LUS ships no PCH of its own and these headers dominate its build. Done here rather than in the
 # submodule, and PRIVATE, so nothing about its public interface changes.
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU|MSVC")
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU|MSVC" AND
+    NOT CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
     target_precompile_headers(libultraship PRIVATE
         "$<$<COMPILE_LANGUAGE:CXX>:<ship/Context.h$<ANGLE-R>>"
         "$<$<COMPILE_LANGUAGE:CXX>:<ship/resource/ResourceManager.h$<ANGLE-R>>"
@@ -216,24 +269,49 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND DEFINED ANDROID_VCPKG_ROOT)
     endif()
 endif()
 add_subdirectory(ZAPDTR/ZAPD ${CMAKE_BINARY_DIR}/ZAPD)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    # ZAPD's generic Unix branch publishes GNU linker flags to consumers.
+    # Replace that interface with the Apple equivalent without modifying the
+    # upstream submodule.
+    set_property(TARGET ZAPDLib PROPERTY INTERFACE_LINK_OPTIONS "-pthread")
+    set_property(TARGET ZAPDLib PROPERTY INTERFACE_LINK_LIBRARIES
+        "libultraship;PNG::PNG;Threads::Threads;-Wl,-force_load;$<TARGET_LINKER_FILE:OTRExporter>"
+    )
+endif()
 add_subdirectory(OTRExporter)
-add_subdirectory(mm)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS" OR BUILD_ARCHIVE_GENERATOR_ONLY)
+    if(BUILD_ARCHIVE_GENERATOR_ONLY)
+        # Imported package targets created inside libultraship are directory-scoped.
+        # The native exporter also needs these targets in this top-level scope.
+        find_package(tinyxml2 CONFIG REQUIRED COMPONENTS shared)
+        find_package(libzip CONFIG REQUIRED)
+    endif()
+    target_link_libraries(OTRExporter PUBLIC
+        tinyxml2::tinyxml2
+        libzip::zip
+    )
+endif()
+if(NOT BUILD_ARCHIVE_GENERATOR_ONLY)
+    add_subdirectory(mm)
 
-set_property(TARGET 2ship PROPERTY APPIMAGE_DESKTOP_FILE_TERMINAL YES)
-set_property(TARGET 2ship PROPERTY APPIMAGE_DESKTOP_FILE "${CMAKE_SOURCE_DIR}/mm/linux/2s2h.desktop")
-set_property(TARGET 2ship PROPERTY APPIMAGE_ICON_FILE "${CMAKE_BINARY_DIR}/2s2hIcon.png")
+    set_property(TARGET 2ship PROPERTY APPIMAGE_DESKTOP_FILE_TERMINAL YES)
+    set_property(TARGET 2ship PROPERTY APPIMAGE_DESKTOP_FILE "${CMAKE_SOURCE_DIR}/mm/linux/2s2h.desktop")
+    set_property(TARGET 2ship PROPERTY APPIMAGE_ICON_FILE "${CMAKE_BINARY_DIR}/2s2hIcon.png")
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-install(FILES "${CMAKE_BINARY_DIR}/mm/2ship.o2r" DESTINATION . COMPONENT ship)
-install(TARGETS ZAPD DESTINATION ./assets/extractor COMPONENT extractor)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/extractor/" DESTINATION ./assets/ COMPONENT extractor)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/xml/" DESTINATION ./assets/xml COMPONENT extractor)
+    if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+        install(FILES "${CMAKE_BINARY_DIR}/mm/2ship.o2r" DESTINATION . COMPONENT ship)
+        install(TARGETS ZAPD DESTINATION ./assets/extractor COMPONENT extractor)
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/extractor/" DESTINATION ./assets/ COMPONENT extractor)
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/xml/" DESTINATION ./assets/xml COMPONENT extractor)
+    endif()
+
+    if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/extractor/" DESTINATION ./assets/ COMPONENT 2s2h)
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/xml/" DESTINATION ./assets/xml COMPONENT 2s2h)
+    endif()
+
 endif()
 
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/extractor/" DESTINATION ./assets/ COMPONENT 2s2h)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/mm/assets/xml/" DESTINATION ./assets/xml COMPONENT 2s2h)
-endif()
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 file(COPY "${CMAKE_SOURCE_DIR}/mm/assets/extractor/" DESTINATION "${CMAKE_SOURCE_DIR}/Android/app/src/main/assets/assets/extractor")
@@ -301,7 +379,9 @@ add_custom_target(CreateOSXIcons
    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
    COMMENT "Creating OSX icons ..."
    )
-add_dependencies(2ship CreateOSXIcons)
+if(TARGET 2ship)
+    add_dependencies(2ship CreateOSXIcons)
+endif()
 
 install(TARGETS ZAPD DESTINATION ${CMAKE_BINARY_DIR}/assets/extractor)
 

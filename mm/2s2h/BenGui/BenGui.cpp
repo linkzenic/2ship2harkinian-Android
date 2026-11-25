@@ -82,19 +82,23 @@ void SetupMenu() {
     gui->SetMenu(mBenMenu);
 
     auto& style = ImGui::GetStyle();
+#if defined(__ANDROID__) || defined(__IOS__)
 #if defined(__ANDROID__)
-    float androidMenuScale = CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f);
-    if (androidMenuScale < 1.0f) {
-        androidMenuScale = 1.0f;
-    } else if (androidMenuScale > 3.0f) {
-        androidMenuScale = 3.0f;
-    }
-    style.FramePadding = ImVec2(4.0f * androidMenuScale, 6.0f * androidMenuScale);
-    style.ItemSpacing = ImVec2(8.0f * androidMenuScale, 6.0f * androidMenuScale);
-    style.ItemInnerSpacing = ImVec2(4.0f * androidMenuScale, 4.0f * androidMenuScale);
-    style.ScrollbarSize = 14.0f * androidMenuScale;
-    style.GrabMinSize = 12.0f * androidMenuScale;
-    ImGui::GetIO().FontGlobalScale = androidMenuScale;
+    float mobileMenuScale = CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f);
+    mobileMenuScale = std::clamp(mobileMenuScale, 1.0f, 3.0f);
+#elif defined(__TVOS__)
+    float mobileMenuScale = CVarGetFloat("gSettings.Menu.TVOSScale", 1.5f);
+    mobileMenuScale = std::clamp(mobileMenuScale, 1.0f, 2.0f);
+#else
+    float mobileMenuScale = CVarGetFloat("gSettings.Menu.IOSScale", 0.65f);
+    mobileMenuScale = std::clamp(mobileMenuScale, 0.35f, 1.0f);
+#endif
+    style.FramePadding = ImVec2(4.0f * mobileMenuScale, 6.0f * mobileMenuScale);
+    style.ItemSpacing = ImVec2(8.0f * mobileMenuScale, 6.0f * mobileMenuScale);
+    style.ItemInnerSpacing = ImVec2(4.0f * mobileMenuScale, 4.0f * mobileMenuScale);
+    style.ScrollbarSize = 14.0f * mobileMenuScale;
+    style.GrabMinSize = 12.0f * mobileMenuScale;
+    ImGui::GetIO().FontGlobalScale = mobileMenuScale;
 #else
     style.FramePadding = ImVec2(4.0f, 6.0f);
     style.ItemSpacing = ImVec2(8.0f, 6.0f);

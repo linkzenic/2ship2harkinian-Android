@@ -4,6 +4,7 @@ on:
     branches-ignore:
       - android
       - release/android-*
+      - platform-integration
     tags-ignore:
       - "v*-android.*"
   pull_request:

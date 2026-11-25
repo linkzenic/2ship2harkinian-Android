@@ -1,0 +1,67 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 120
+    env:
+      TWO_SHIP_IOS_VERSION: 5.0.1
+      TWO_SHIP_IOS_BUILD_NUMBER: 2
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show build tools
+        run: |
+          xcodebuild -version
+          cmake --version
+
+      - name: Install archive generator prerequisite
+        run: brew install sdl2 glew libzip nlohmann-json tinyxml2 spdlog
+
+      - name: Generate and build unsigned iOS app
+        run: |
+          cmake -S . -B build-asset-generator -GNinja \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_CROWD_CONTROL=OFF \
+            -DBUILD_ARCHIVE_GENERATOR_ONLY=ON \
+            -DINCLUDE_MPQ_SUPPORT=OFF \
+            -DFETCHCONTENT_QUIET=OFF \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix sdl2);$(brew --prefix glew);$(brew --prefix libzip);$(brew --prefix nlohmann-json);$(brew --prefix tinyxml2);$(brew --prefix spdlog)" \
+            -DGLEW_ROOT="$(brew --prefix glew)"
+          cmake --build build-asset-generator --target Generate2ShipOtr --parallel 2
+          test -s mm/2ship.o2r
+          TWO_SHIP_O2R_PATH="$GITHUB_WORKSPACE/mm/2ship.o2r" scripts/build-ios.sh --device
+
+      - name: Package unsigned iOS IPA
+        run: scripts/package-ios-unsigned.sh
+
+      - name: Verify public artifact
+        run: |
+          set -euo pipefail
+          test -f dist/2Ship-2-Harkinian-iOS-unsigned.ipa
+          if unzip -l dist/2Ship-2-Harkinian-iOS-unsigned.ipa | grep -E '(_CodeSignature|embedded\.mobileprovision)'; then
+            echo "Signed material found in public artifact."
+            exit 1
+          fi
+          if strings dist/2Ship-2-Harkinian-iOS-unsigned.ipa | grep -E -i '(/Users/)'; then
+            echo "Private build metadata found in public artifact."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 2Ship-2-Harkinian-iOS-unsigned
+          path: dist/2Ship-2-Harkinian-iOS-unsigned.ipa
+          if-no-files-found: error

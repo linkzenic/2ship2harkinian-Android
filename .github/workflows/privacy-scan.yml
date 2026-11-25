@@ -1,0 +1,43 @@
+name: Privacy scan
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject private release material
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if find . -type f \( \
+              -name '*.mobileprovision' -o \
+              -name '*.p12' -o \
+              -name '*.cer' -o \
+              -name '*.pem' -o \
+              -name '*.sav' -o \
+              -name '*.otr' -o \
+              -name '*.o2r' \
+            \) -print -quit | grep -q .; then
+            echo 'Private signing or user data file found.'
+            exit 1
+          fi
+
+          if grep -R -I -E -i \
+              --exclude-dir=.git \
+              --exclude='privacy-scan.yml' \
+              --exclude='ios-release.yml' \
+              --exclude='tvos-release.yml' \
+              --exclude='package-ios-unsigned.sh' \
+              '(/Users/)' .; then
+            echo 'Private build metadata found.'
+            exit 1
+          fi

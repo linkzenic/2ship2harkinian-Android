@@ -70,12 +70,57 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/PresetManager/PresetManager.h"
 #include "2s2h/config/ConfigUpdaters.h"
 
+#ifdef __IOS__
+#if !defined(__TVOS__)
+#include "../ios/TwoShipIOSTouchControls.h"
+#endif
+#if defined(__TVOS__)
+#include "../ios/TwoShipTVOSFileServer.h"
+#endif
+#endif
+
 #ifdef __ANDROID__
 #include <ship/port/mobile/MobileImpl.h>
 extern "C" void Android_SetDataRootPath(const char* path) {
     if (path != nullptr) {
         Ship::Context::SetAndroidDataRootPath(path);
     }
+}
+#endif
+
+#if defined(__TVOS__)
+static void RemoveTVOSRightStickCButtonDefaults() {
+    constexpr const char* migrationCvar = "gSettings.TvOSRemovedRightStickCButtonDefaultsV3";
+    auto config = Ship::Context::GetRawInstance()->GetConfig();
+    if (config->GetInt(std::string("CVars.") + migrationCvar, 0) != 0) {
+        return;
+    }
+
+    constexpr const char* mappingListCvars[] = {
+        "gSettings.Controllers.Port1.Buttons.CUpButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CDownButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CLeftButtonMappingIds",
+        "gSettings.Controllers.Port1.Buttons.CRightButtonMappingIds",
+    };
+    for (const char* mappingListCvar : mappingListCvars) {
+        const std::string currentMappings = CVarGetString(mappingListCvar, "");
+        std::string retainedMappings;
+        for (const std::string& mappingId : StringHelper::Split(currentMappings, ",")) {
+            if (mappingId.empty()) {
+                continue;
+            }
+            const bool isRightStickAxis =
+                mappingId.find("-SDLA2-") != std::string::npos ||
+                mappingId.find("-SDLA3-") != std::string::npos;
+            if (!isRightStickAxis) {
+                retainedMappings += mappingId + ",";
+            }
+        }
+        config->SetString(std::string("CVars.") + mappingListCvar, retainedMappings);
+    }
+    config->SetInt(std::string("CVars.") + migrationCvar, 1);
+    config->Save();
+    CVarLoad();
 }
 #endif
 
@@ -148,15 +193,35 @@ typedef struct {
 
 std::shared_ptr<Fast::Fast3dWindow> benFast3dWindow;
 static ArchiveVersion DetectArchiveVersion(std::string path, bool isO2rType);
+ArchiveVersion ReadPortVersionFromArchive(std::string archivePath, bool isO2rType);
 static bool VerifyArchiveVersion(ArchiveVersion version);
 std::string portArchivePath = "";
 static bool shipArchiveVersionMatch = false;
 
+#if defined(__IOS__) && !defined(__TVOS__)
+static void UpdateIOSTouchMenu() {
+    auto gui = Ship::Context::GetRawInstance()->GetWindow()->GetGui();
+    auto menu = gui->GetMenu();
+    if (menu != nullptr && TwoShipIOS_ConsumeMenuToggleRequest()) {
+        menu->ToggleVisibility();
+    }
+    TwoShipIOS_SetTouchControlsMenuVisible(gui->GetMenuOrMenubarVisible());
+}
+#endif
+
 OTRGlobals::OTRGlobals() {
     context = Ship::Context::CreateUninitializedInstance("2 Ship 2 Harkinian", appShortName, "2ship2harkinian.json");
 
+#if defined(__IOS__)
+    // Use the support archive shipped with this build, not a stale copy in Documents.
+    portArchivePath = Ship::Context::GetPathRelativeToAppBundle("2ship.o2r");
+    ArchiveVersion portArchiveVersion = std::filesystem::exists(portArchivePath)
+                                            ? ReadPortVersionFromArchive(portArchivePath, true)
+                                            : ArchiveVersion{ INT16_MAX, INT16_MAX, INT16_MAX };
+#else
     portArchivePath = Ship::Context::LocateFileAcrossAppDirs("2ship.o2r");
     ArchiveVersion portArchiveVersion = DetectArchiveVersion("2ship.o2r", true);
+#endif
     shipArchiveVersionMatch = portArchiveVersion.major == gBuildVersionMajor &&
                               portArchiveVersion.minor == gBuildVersionMinor &&
                               portArchiveVersion.patch == gBuildVersionPatch;
@@ -184,6 +249,18 @@ OTRGlobals::OTRGlobals() {
     benFast3dWindow =
         std::make_shared<Fast::Fast3dWindow>(std::vector<std::shared_ptr<Ship::GuiWindow>>({ benInputEditorWindow }));
     context->InitWindow(benFast3dWindow);
+#if defined(__IOS__) && !defined(__TVOS__)
+    // SDL initializes its iOS input backend with the window. Attach the virtual
+    // touch controller afterwards so the handle survives and then make it
+    // visible to ControlDeck before the first controller read.
+    TwoShipIOS_PrepareTouchController();
+    context->GetControlDeck()->GetConnectedPhysicalDeviceManager()->RefreshConnectedSDLGamepads();
+    auto iosGyro = context->GetControlDeck()->GetControllerByPort(0)->GetGyro();
+    if (iosGyro->GetGyroMapping() == nullptr) {
+        iosGyro->SetGyroMappingFromRawPress();
+    }
+    TwoShipIOS_SetTouchControlsEnabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) == 0);
+#endif
 
     BenGui::SetupMenu();
 
@@ -291,6 +368,11 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
     auto gui = wnd->GetGui();
 
     bool shouldRegen = VerifyArchiveVersion(DetectArchiveVersion("mm.o2r", true));
+#if defined(__IOS__)
+    // Existing iOS archives remain usable across this update. Keep them in
+    // place because archive generation is not part of the normal iOS flow.
+    shouldRegen = false;
+#endif
 
     std::filesystem::path ownPath;
     std::vector<std::string> args;
@@ -561,6 +643,9 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         }
         // Process window events for resize, mouse, keyboard events
         wnd->HandleEvents();
+#if defined(__IOS__) && !defined(__TVOS__)
+        UpdateIOSTouchMenu();
+#endif
         UIWidgets::Colors themeColor =
             static_cast<UIWidgets::Colors>(CVarGetInteger("gSettings.Menu.Theme", UIWidgets::Colors::LightBlue));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIWidgets::ColorValues.at(themeColor));
@@ -1222,6 +1307,9 @@ void RunCommands(Gfx* Commands, int time, int step, int denom, int count) {
 
     // Process window events for resize, mouse, keyboard events
     wnd->HandleEvents();
+#if defined(__IOS__) && !defined(__TVOS__)
+    UpdateIOSTouchMenu();
+#endif
 
     auto intp = wnd->GetInterpreterWeak().lock().get();
     intp->mInterpolationIndex = 0;
@@ -1848,33 +1936,20 @@ extern "C" AnimationHeaderCommon* ResourceMgr_LoadAnimByName(const char* path) {
             pathStr = pathStr.substr(sOtr.length());
         }
 
-        // Try alt/ first
         pathStr = Ship::IResource::gAltAssetPrefix + pathStr;
         AnimationHeaderCommon* animHeader = (AnimationHeaderCommon*)ResourceGetDataByName(pathStr.c_str());
 
-        // If alt loaded successfully, verify it has valid data
-        if (animHeader != NULL) {
-            // Check for valid frame count (> 0)
-            if (animHeader->frameCount > 0) {
-                // For Normal animations: check frameData (comes after frameCount in AnimationHeader)
-                // For Link animations: check segment (comes after frameCount in LinkAnimationHeader)
-                // We check both to be safe - if either is valid, the animation is usable
-                AnimationHeader* normalAnim = (AnimationHeader*)animHeader;
-                PlayerAnimationHeader* playerAnim = (PlayerAnimationHeader*)animHeader;
-
-                // Valid if Normal animation has frameData OR Link animation has segment
-                if (normalAnim->frameData != NULL || playerAnim->segmentVoid != NULL) {
-                    return animHeader;
-                }
+        if (animHeader != NULL && animHeader->frameCount > 0) {
+            AnimationHeader* normalAnim = (AnimationHeader*)animHeader;
+            PlayerAnimationHeader* playerAnim = (PlayerAnimationHeader*)animHeader;
+            if (normalAnim->frameData != NULL || playerAnim->segmentVoid != NULL) {
+                return animHeader;
             }
-            // Alt loaded but is invalid (broken), fall through to original path
         }
 
-        // Fall back to original path
         return (AnimationHeaderCommon*)ResourceGetDataByName(path);
     }
 
-    // Alt OFF: use original path directly
     return (AnimationHeaderCommon*)ResourceGetDataByName(path);
 }
 

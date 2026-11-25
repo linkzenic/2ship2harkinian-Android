@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
+else()
+    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+endif()
 
 project(2ship LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|tvOS")
     enable_language(OBJCXX)
     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fobjc-arc")
     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
@@ -34,6 +38,7 @@ FetchContent_Declare(
     dr_libs
     GIT_REPOSITORY https://github.com/mackron/dr_libs.git
 	GIT_TAG da35f9d6c7374a95353fd1df1d394d44ab66cf01
+    GIT_SUBMODULES ""
 )
 FetchContent_MakeAvailable(dr_libs)
 
@@ -96,6 +101,27 @@ source_group("include" FILES ${Header_Files__include})
 # }}}
 
 file(GLOB_RECURSE ship__ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "2s2h/*.c" "2s2h/*.cpp" "2s2h/*.h" "2s2h/*.hpp")
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    list(APPEND ship__
+        ios/TwoShipSaveBridgeSync.h
+        ios/TwoShipSaveBridgeSync.mm
+        ios/Assets.xcassets
+    )
+    if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
+        list(APPEND ship__
+            ios/TwoShipTVOSFileServer.h
+            ios/TwoShipTVOSFileServer.mm
+        )
+    else()
+        list(APPEND ship__
+            ios/TwoShipIOSTouchControls.h
+            ios/TwoShipIOSTouchControls.mm
+        )
+    endif()
+    set_source_files_properties(ios/Assets.xcassets PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources
+    )
+endif()
 # Create source groups that match the real file directory paths
 foreach(source IN LISTS ship__)
     get_filename_component(source_path "${source}" PATH)
@@ -176,7 +202,9 @@ set(ALL_FILES
 ################################################################################
 # Target
 ################################################################################
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+if (CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${ALL_FILES})
+elseif (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
     add_executable(${PROJECT_NAME} ${ALL_FILES})
 else()
     add_library(${PROJECT_NAME} SHARED ${ALL_FILES})
@@ -200,6 +228,61 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
         OUTPUT_NAME "2s2h-macos"
     )
+elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
+        set(TWO_SHIP_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info-tvOS.plist.in")
+        set(TWO_SHIP_DEVICE_FAMILY "3")
+        set(TWO_SHIP_APP_ICON "AppIconTV")
+    else()
+        set(TWO_SHIP_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in")
+        set(TWO_SHIP_DEVICE_FAMILY "1,2")
+        set(TWO_SHIP_APP_ICON "AppIcon")
+    endif()
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "${BUNDLE_ID}"
+        MACOSX_BUNDLE_INFO_PLIST "${TWO_SHIP_INFO_PLIST}"
+        OUTPUT_NAME "2Ship 2 Harkinian"
+        XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${BUNDLE_ID}"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${TWO_SHIP_DEVICE_FAMILY}"
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "${TWO_SHIP_APP_ICON}"
+    )
+    if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
+        target_compile_definitions(${PROJECT_NAME} PRIVATE "__TVOS__")
+        target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Network" "-framework UIKit")
+    endif()
+    if(NOT SIGN_LIBRARY)
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+        )
+    endif()
+    if(DEFINED TWO_SHIP_O2R_PATH AND EXISTS "${TWO_SHIP_O2R_PATH}")
+        # Keep the archive's bundle name stable even when callers provide an
+        # arbitrary local filename. Runtime lookup is always 2ship.o2r.
+        set(TWO_SHIP_BUNDLED_O2R_PATH "${CMAKE_CURRENT_BINARY_DIR}/2ship.o2r")
+        add_custom_command(
+            OUTPUT "${TWO_SHIP_BUNDLED_O2R_PATH}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${TWO_SHIP_O2R_PATH}"
+                "${TWO_SHIP_BUNDLED_O2R_PATH}"
+            DEPENDS "${TWO_SHIP_O2R_PATH}"
+            COMMENT "Preparing bundled 2ship.o2r"
+        )
+        add_custom_target(TwoShipBundledO2R DEPENDS "${TWO_SHIP_BUNDLED_O2R_PATH}")
+        add_dependencies(${PROJECT_NAME} TwoShipBundledO2R)
+        target_sources(${PROJECT_NAME} PRIVATE "${TWO_SHIP_BUNDLED_O2R_PATH}")
+        set_source_files_properties("${TWO_SHIP_BUNDLED_O2R_PATH}" PROPERTIES
+            GENERATED TRUE
+            MACOSX_PACKAGE_LOCATION Resources
+        )
+    else()
+        message(WARNING
+            "TWO_SHIP_O2R_PATH does not point to a 2ship.o2r archive. "
+            "The iOS app will not have its required UI resources."
+        )
+    endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	set_target_properties(${PROJECT_NAME} PROPERTIES
 	OUTPUT_NAME "2s2h.elf"
@@ -290,6 +373,21 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
         SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
         LOG_LEVEL_GAME_PRINTS=${SPDLOG_LEVEL_OFF}
 	)
+elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "$<$<CONFIG:Debug>:_DEBUG>"
+        "$<$<CONFIG:Release>:NDEBUG>"
+        "__IOS__"
+        "F3DEX_GBI_2"
+        "_CONSOLE"
+        "_CRT_SECURE_NO_WARNINGS"
+        "UNICODE"
+        "_UNICODE"
+        SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
+        LOG_LEVEL_GAME_PRINTS=${SPDLOG_LEVEL_OFF}
+        "NON_MATCHING"
+        "NON_EQUIVALENT"
+    )
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|Clang|AppleClang")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE
 		"$<$<CONFIG:Debug>:"
@@ -360,7 +458,7 @@ if(MSVC)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
-    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|tvOS")
         target_compile_options(${PROJECT_NAME} PRIVATE
             -Wall -Wextra -Wno-error
             -Wno-return-type
@@ -484,10 +582,14 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
 	    ${CPU_OPTION}
         )
 
-        target_link_options(${PROJECT_NAME} PRIVATE
-            -pthread
-            -Wl,-export-dynamic
-        )
+        if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+            target_link_options(${PROJECT_NAME} PRIVATE -pthread)
+        else()
+            target_link_options(${PROJECT_NAME} PRIVATE
+                -pthread
+                -Wl,-export-dynamic
+            )
+        endif()
     endif()
 endif()
 
@@ -500,6 +602,18 @@ SKIP_PRECOMPILE_HEADERS ON
 ################################################################################
 # Precompiled Headers
 ################################################################################
+if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    # Xcode uses one generated PCH file for both C and C++. The game's PCH is
+    # intentionally C++-only, so leave C translation units on their normal
+    # explicit includes while retaining the upstream PCH for C++ sources.
+    get_target_property(TWO_SHIP_TARGET_SOURCES ${PROJECT_NAME} SOURCES)
+    foreach(TWO_SHIP_SOURCE IN LISTS TWO_SHIP_TARGET_SOURCES)
+        if(TWO_SHIP_SOURCE MATCHES "\\.c$")
+            set_source_files_properties(${TWO_SHIP_SOURCE} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+        endif()
+    endforeach()
+endif()
+
 target_precompile_headers(${PROJECT_NAME} PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:<libultraship/bridge/consolevariablebridge.h$<ANGLE-R>>"
     "$<$<COMPILE_LANGUAGE:CXX>:<ship/Context.h$<ANGLE-R>>"
@@ -551,7 +665,7 @@ endif()
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
     set(VS_COPY_ASSETS_CMD ${CMAKE_COMMAND} -E copy_directory_if_different $<TARGET_FILE_DIR:2ship>/assets ${CMAKE_BINARY_DIR}/mm/assets)
 endif()
-if(NOT CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS|Android")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS|Android|iOS|tvOS")
     add_custom_command(
         TARGET ${PROJECT_NAME}
         POST_BUILD
@@ -560,6 +674,16 @@ if(NOT CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS|Android")
         COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different ${CMAKE_SOURCE_DIR}/mm/assets/xml $<TARGET_FILE_DIR:2ship>/assets/xml
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:2ship>/assets/symbols
         COMMAND ${VS_COPY_ASSETS_CMD}
+    )
+elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    add_custom_command(
+        TARGET ${PROJECT_NAME}
+        POST_BUILD
+        COMMENT "Bundling extractor assets"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+            ${CMAKE_SOURCE_DIR}/mm/assets/extractor $<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/assets
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+            ${CMAKE_SOURCE_DIR}/mm/assets/xml $<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/assets/xml
     )
 endif()
 ################################################################################
@@ -665,6 +789,22 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
         SDL2::SDL2
         Threads::Threads
     )
+elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    set(ADDITIONAL_LIBRARY_DEPENDENCIES
+        "libultraship"
+        "ZAPDLib"
+        Ogg::ogg
+        Vorbis::vorbis
+        Vorbis::vorbisenc
+        Vorbis::vorbisfile
+        Opus::opus
+        OpusFile::opusfile
+        SDL2::SDL2-static
+        SDL2::SDL2main
+        Threads::Threads
+    )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
     find_package(SDL2 REQUIRED)
     set(ADDITIONAL_LIBRARY_DEPENDENCIES
@@ -702,7 +842,7 @@ else()
 
 endif()
 
-if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS")
+if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|tvOS|NintendoSwitch|CafeOS")
 INSTALL(TARGETS 2ship DESTINATION . COMPONENT 2s2h)
 endif()
 

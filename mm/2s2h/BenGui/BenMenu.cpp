@@ -21,12 +21,41 @@
 #include "2s2h/Rando/Rando.h"
 #include "build.h"
 #include <algorithm>
+#if defined(__TVOS__)
+#include "ios/TwoShipTVOSFileServer.h"
+#endif
+#if defined(__IOS__)
+#include "ios/TwoShipSaveBridgeSync.h"
+#endif
 #if defined(__ANDROID__)
 #include <jni.h>
 #include <SDL.h>
 #ifndef ANDROID_APP_VERSION_NAME
 #define ANDROID_APP_VERSION_NAME "unknown"
 #endif
+#endif
+#if defined(__IOS__) && !defined(__TVOS__)
+#include "ios/TwoShipIOSTouchControls.h"
+#endif
+
+#if defined(__IOS__) && !defined(__TVOS__)
+static void SetIOSTouchControlsDisabled(bool disabled) {
+    TwoShipIOS_SetTouchControlsEnabled(disabled ? 0 : 1);
+}
+
+static void SetIOSTouchFaceButtonLayout(int32_t layout) {
+    TwoShipIOS_SetTouchFaceButtonLayout(layout);
+}
+
+static void SetIOSTouchLeftStickFloating(bool floating) {
+    TwoShipIOS_SetTouchLeftStickFloating(floating ? 1 : 0);
+}
+
+static const std::unordered_map<int32_t, const char*> touchFaceButtonLayoutMap = {
+    { 0, "ABXY (Nintendo)" },
+    { 1, "BAYX (Xbox)" },
+    { 2, "GC Layout" },
+};
 #endif
 
 #include <fast/Fast3dGui.h>
@@ -673,7 +702,7 @@ void BenMenu::AddSettings() {
     // Add Settings menu
     AddMenuEntry("Settings", "gSettings.Menu.SettingsSidebarSection");
     // General Settings
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     AddSidebarEntry("Settings", "General", 1);
 #else
     AddSidebarEntry("Settings", "General", 2);
@@ -702,11 +731,35 @@ void BenMenu::AddSettings() {
                      .Step(0.05f)
                      .Format("%.2f")
                      .Tooltip("Adjusts the size of the Android menu."));
+#elif defined(__IOS__) && !defined(__TVOS__)
+    AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gSettings.Menu.IOSScale")
+        .Options(FloatSliderOptions()
+                     .DefaultValue(0.65f)
+                     .Min(0.35f)
+                     .Max(1.0f)
+                     .Step(0.05f)
+                     .Format("%.2f")
+                     .Tooltip("Adjusts the size of the iOS menu."));
+#elif defined(__TVOS__)
+    AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gSettings.Menu.TVOSScale")
+        .Options(FloatSliderOptions()
+                     .DefaultValue(1.5f)
+                     .Min(1.0f)
+                     .Max(2.0f)
+                     .Step(0.05f)
+                     .Format("%.2f")
+                     .Tooltip("Adjusts the size of the Apple TV menu."));
 #endif
 #if not defined(__SWITCH__) and not defined(__WIIU__)
     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
-        .Options(CheckboxOptions().Tooltip(
+        .Options(CheckboxOptions()
+#if defined(__TVOS__)
+                     .DefaultValue(true)
+#endif
+                     .Tooltip(
             "Allows controller navigation of the 2Ship menu (Settings, Enhancements,...)\nCAUTION: "
             "This will disable game inputs while the menu is visible.\n\nD-pad to move between "
             "items, A to select, B to move up in scope."));
@@ -756,13 +809,61 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Change Data Folder", WIDGET_BUTTON)
         .Callback([](WidgetInfo& info) { OpenAndroidDataFolderChooser(); })
         .Options(ButtonOptions().Tooltip("Choose where Android stores saves, mods, settings, and support files."));
-#else
+#elif !defined(__IOS__)
     AddWidget(path, "Open App Files Folder", WIDGET_BUTTON)
         .Callback([](WidgetInfo& info) {
             std::string filesPath = Ship::Context::GetRawInstance()->GetAppDirectoryPath();
             SDL_OpenURL(std::string("file:///" + std::filesystem::absolute(filesPath).string()).c_str());
         })
         .Options(ButtonOptions().Tooltip("Opens the folder that contains the save and mods folders, etc."));
+#endif
+
+#if defined(__IOS__)
+    AddWidget(path, "Save Bridge", WIDGET_SEPARATOR_TEXT);
+#if defined(__TVOS__)
+    AddWidget(path, "Enter Save Bridge Pairing Code", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipSaveBridgeSync_ShowPairingInput(); });
+    AddWidget(path, "Opens a native Apple TV keypad that works with the Siri Remote and controllers.", WIDGET_TEXT);
+#else
+    AddWidget(path, "Save Bridge Pairing", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        static char pairingCode[7] = {};
+        ImGui::TextUnformatted("Enter the six-digit code shown in Linkzenic Save Bridge on your Mac.");
+        ImGui::SetNextItemWidth(140.0f);
+        ImGui::InputText("Pairing Code", pairingCode, sizeof(pairingCode), ImGuiInputTextFlags_CharsDecimal);
+        ImGui::SameLine();
+        if (ImGui::Button("Pair with Save Bridge")) {
+            TwoShipSaveBridgeSync_Pair(pairingCode);
+        }
+    });
+#endif
+    AddWidget(path, "Sync Saves with Save Bridge", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipSaveBridgeSync_SyncNow(); });
+    AddWidget(path, "Save Bridge Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[384] = {};
+        TwoShipSaveBridgeSync_GetStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+#endif
+
+#if defined(__TVOS__)
+    AddWidget(path, "Apple TV File Transfer", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "File Transfer Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[512] = {};
+        TwoShipTVOSFileServer_GetStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+    AddWidget(path, "Start File Transfer", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipTVOSFileServer_Start(); })
+        .Options(ButtonOptions().Tooltip(
+            "Starts a private web page for uploading save files, legally acquired ROMs, and mods from your home "
+            "network."));
+    AddWidget(path, "Stop File Transfer", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) { TwoShipTVOSFileServer_Stop(); })
+        .Options(ButtonOptions().Tooltip("Stops the local-network upload page."));
 #endif
 
 #if !defined(__ANDROID__)
@@ -990,6 +1091,48 @@ void BenMenu::AddSettings() {
         .CVar("gWindows.BenInputEditor")
         .WindowName("2S2H Input Editor")
         .Options(ButtonOptions().Tooltip("Enables the separate Bindings Window.").Size(Sizes::Inline));
+#if defined(__IOS__) && !defined(__TVOS__)
+    path.sidebarName = "Touch Controls";
+    path.column = SECTION_COLUMN_1;
+    AddSidebarEntry("Settings", "Touch Controls", 2);
+    AddWidget(path, "Touch Face Buttons", WIDGET_CVAR_COMBOBOX)
+        .CVar("gSettings.TouchControls.FaceButtonLayout")
+        .Callback([](WidgetInfo& info) {
+            SetIOSTouchFaceButtonLayout(CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
+        })
+        .Options(ComboboxOptions()
+                     .ComboMap(&touchFaceButtonLayoutMap)
+                     .DefaultIndex(0)
+                     .Tooltip("Choose Nintendo, Xbox, or GameCube touch-button placement."));
+    SetIOSTouchFaceButtonLayout(CVarGetInteger("gSettings.TouchControls.FaceButtonLayout", 0));
+    AddWidget(path, "Floating Left Stick", WIDGET_CVAR_CHECKBOX)
+        .CVar("gSettings.TouchControls.FloatingLeftStick")
+        .Callback([](WidgetInfo& info) {
+            SetIOSTouchLeftStickFloating(
+                CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
+        })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "When disabled, the left touch stick stays fixed in the lower-left corner."));
+    SetIOSTouchLeftStickFloating(
+        CVarGetInteger("gSettings.TouchControls.FloatingLeftStick", 1) != 0);
+    AddWidget(path, "Disable Touch Controls", WIDGET_CVAR_CHECKBOX)
+        .CVar("gSettings.TouchControls.Disabled")
+        .Callback([](WidgetInfo& info) {
+            SetIOSTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
+        })
+        .Options(CheckboxOptions().Tooltip("Hides the on-screen touch controls."));
+    SetIOSTouchControlsDisabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) != 0);
+#endif
+#if defined(__TVOS__)
+    AddWidget(path, "Apple Controller Diagnostics", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Native Controller Status", WIDGET_CUSTOM).CustomFunction([](WidgetInfo& info) {
+        char status[1024] = {};
+        TwoShipTVOS_GetNativeControllerStatus(status, sizeof(status));
+        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(status);
+        ImGui::PopTextWrapPos();
+    });
+#endif
 
 #if defined(__ANDROID__)
     path.sidebarName = "Touch Controls";
@@ -1469,7 +1612,7 @@ void BenMenu::AddEnhancements() {
         .Options(CheckboxOptions().Tooltip("Allows Link to instantly puts away held item without waiting."));
     AddWidget(path, "Unsheathe Sword Without Slashing", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Player.UnsheatheWithoutSlashing")
-        .Options(CheckboxOptions().Tooltip("Allows Link to unsheathe sword without slashing automatically."));
+        .Options(CheckboxOptions().Tooltip("Allows Link to unsheathe his sword without immediately slashing."));
     AddWidget(path, "Fierce Deity Putaway", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Player.FierceDeityPutaway")
         .Options(CheckboxOptions().Tooltip("Allows Fierce Deity Link to put away his sword."));
@@ -1518,6 +1661,10 @@ void BenMenu::AddEnhancements() {
         .CVar("gEnhancements.Items.PictoBoxOnCUp")
         .Options(CheckboxOptions().Tooltip(
             "Press C-Up to activate the Pictograph Box once acquired, without needing to equip it to a C-button."));
+    AddWidget(path, "Color Pictograph Album", WIDGET_CVAR_CHECKBOX)
+        .CVar("gEnhancements.Items.ColorPictograph")
+        .Options(CheckboxOptions().Tooltip(
+            "Displays the active pictograph in color and saves every shot as a full-color PNG album."));
     AddWidget(path, "Arrow Type Cycling", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.PlayerActions.ArrowCycle")
         .Options(CheckboxOptions().Tooltip(
@@ -2081,9 +2228,9 @@ void BenMenu::AddEnhancements() {
                      .DefaultValue(true));
     AddWidget(path, "Fix Button Env Color", WIDGET_CVAR_CHECKBOX)
         .CVar("gFixes.FixButtonEnvColor")
-        .Options(CheckboxOptions().Tooltip(
-            "Fixes a missing gDPSetEnvColor, which causes ammo counts and B button "
-            "action labels to be the wrong color prior to obtaining magic or other conditions."));
+        .Options(CheckboxOptions().Tooltip("Fixes a missing gDPSetEnvColor, which causes ammo counts and B button "
+                                           "action labels to be the wrong color prior to obtaining magic or other "
+                                           "conditions."));
     AddWidget(path, "Fix Epona stealing Sword", WIDGET_CVAR_CHECKBOX)
         .CVar("gFixes.FixEponaStealingSword")
         .Options(CheckboxOptions().Tooltip(
@@ -2716,7 +2863,8 @@ void BenMenu::InitElement() {
            },
             "Motion Blur Mode mismatch" } },
         { DISABLE_FOR_MOTION_BLUR_OFF,
-          { [](disabledInfo& info) -> bool { return !R_MOTION_BLUR_ENABLED; }, "Motion Blur is disabled" } },
+          { [](disabledInfo& info) -> bool { return gPlayState == nullptr || !R_MOTION_BLUR_ENABLED; },
+            "Motion Blur is disabled" } },
         { DISABLE_FOR_FRAME_ADVANCE_OFF,
           { [](disabledInfo& info) -> bool { return !(gPlayState != nullptr && gPlayState->frameAdvCtx.enabled); },
             "Frame Advance is Disabled" } },

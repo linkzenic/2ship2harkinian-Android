@@ -123,7 +123,7 @@ void wait_for_java_setup() {
 
 void InitOTR(int argc, char* argv[]);
 void Heaps_Free(void);
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__IOS__)
 #define SDL_main main
 #endif
 int SDL_main(int argc, char* argv[] /* void* arg*/) {
@@ -227,4 +227,5 @@ int SDL_main(int argc, char* argv[] /* void* arg*/) {
     FreeConsole();
 #endif
     Heaps_Free();
+    return 0;
 }
