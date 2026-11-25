@@ -22,6 +22,10 @@ Gfx* Gfx_DrawTexRectIA8_DropShadowOffset(Gfx* gfx, TexturePtr texture, s16 textu
                                          s16 r, s16 g, s16 b, s16 a, s32 masks, s32 rects);
 }
 
+#if defined(__IOS__) && !defined(__TVOS__)
+extern "C" int TwoShipTouchHudActive(void);
+float TwoShipTouchFooterTop();
+#endif
 #define CVAR_NAME "gEnhancements.Graphics.ClockType"
 #define CVAR CVarGetInteger(CVAR_NAME, CLOCK_TYPE_ORIGINAL)
 
@@ -79,6 +83,15 @@ void Draw3DSClock() {
 
             s16 posX = 160;
             s16 posY = 210;
+#if defined(__IOS__) && !defined(__TVOS__)
+            if (TwoShipTouchHudActive() && !HudEditor_ShouldOverrideDraw()) {
+                // Leave space for the touch footer above the home indicator.
+                const s16 footerY = TwoShipTouchFooterTop() * SCREEN_HEIGHT;
+                if (footerY < posY + 15) {
+                    posY = footerY - 15;
+                }
+            }
+#endif
 
             OPEN_DISPS(gPlayState->state.gfxCtx);
 

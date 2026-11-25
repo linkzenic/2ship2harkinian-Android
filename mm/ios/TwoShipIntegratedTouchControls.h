@@ -7,6 +7,7 @@ void TwoShipIntegratedCamera(int x, int y);
 void TwoShipIntegratedReset();
 int TwoShipIntegratedState();
 void TwoShipIntegratedLayout(const float* anchors, bool active);
+void TwoShipIntegratedFooterTop(float y);
 int TwoShipIOS_IntegratedTouchStyle();
 void TwoShipIOS_ConfigureIntegratedTouch(int style, float scale, float opacity, int left, int right,
                                          int transparent, int cameraMode, TouchHud::Bindings bindings);

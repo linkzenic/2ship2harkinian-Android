@@ -40,6 +40,9 @@ struct Control {
     float cx=0,cy=0,dx=0,dy=0;
 };
 inline bool DpadDirection(const std::string& key) { return key=="du"||key=="dd"||key=="dl"||key=="dr"; }
+inline bool FooterControl(int style, const std::string& key) {
+    return key=="settings" || key=="start" || key=="map" || key=="fairy" || (style==3 && key=="cu");
+}
 inline float ResizedScale(float original,float w,float h,float requestedW,float requestedH) {
     if(!std::isfinite(original)||!std::isfinite(requestedW)||!std::isfinite(requestedH)||w<=0||h<=0) return 1;
     return std::clamp(original*(requestedW*w+requestedH*h)/(w*w+h*h),.5f,2.f);
@@ -68,7 +71,7 @@ struct Layout {
             auto p=placement.positions.find(key);
             if(style==3&&DpadDirection(key)) p=placement.positions.end();
             float s=p==placement.positions.end()?1:p->second[2];
-            const bool footer = key=="settings" || key=="start" || key=="map" || key=="fairy" || (style==3 && key=="cu");
+            const bool footer = FooterControl(style,key);
             float adjust=style==3&&footer?4*unit:0;
             const float floor = footer ? safe[3]+2*unit : bottom-adjust;
             if (footer) { bh=24; y=1; }
@@ -119,15 +122,13 @@ struct Layout {
                 face("dl","◀",(dcx-step)/w,dcy/h,28,gray);
                 face("dr","▶",(dcx+step)/w,dcy/h,28,gray);
             }
-            const float shift=.02f+1.5f*unit/w;
-            add("start","Start",.54f+shift,.91,66,28);add("settings","Settings",.42f+shift,.91,72,28);
+            // Center the full utility row under the clock; saved positions still win.
+            auto footerX=[&](float offset){ return .5f+offset*unit/w; };
+            add("start","Start",footerX(40),1,66,24);
+            add("settings","Settings",footerX(-37),1,72,24);
             if(style==2||style==3||(style==1&&(state&32))) {
-                auto start=find("start"),settings=find("settings");
-                float gap=start&&settings?std::max(8*unit,start->bounds.x-(settings->bounds.x+settings->bounds.w)):8*unit;
-                float mapX=start?(start->bounds.x+start->bounds.w+gap+18*unit)/w:.63f,mapY=start?start->bounds.cy()/h:.91f;
-                float fairyX=settings?(settings->bounds.x-gap-18*unit)/w:.28f,fairyY=settings?settings->bounds.cy()/h:.91f;
-                add("map","Map",mapX,mapY,36,28);
-                add(style==3?"cu":"fairy","Fairy",fairyX,fairyY,36,28);
+                add("map","Map",footerX(99),1,36,24);
+                add(style==3?"cu":"fairy","Fairy",footerX(-99),1,36,24);
             }
             add("move","Move",style==3?(left+75*unit)/w:.15f,style==3?(h-bottom-75*unit)/h:.80f,style==3?150:132,style==3?150:132,gray,0);
             if(style!=1||editing||(state&16)) add("look","Look",style==3?.62f:.59f,style==3?.62f:.69f,style==3?150:120,style==3?150:120,gray,1);

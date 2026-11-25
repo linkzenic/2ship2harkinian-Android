@@ -21,7 +21,7 @@ index df3ff0fb9..62ad3aa40 100644
 +
  /* vi: set ts=4 sw=4 expandtab: */
 diff --git a/src/video/uikit/SDL_uikitappdelegate.m b/src/video/uikit/SDL_uikitappdelegate.m
-index 31b114a93..4ec673018 100644
+index 31b114a93..72535ec7e 100644
 --- a/src/video/uikit/SDL_uikitappdelegate.m
 +++ b/src/video/uikit/SDL_uikitappdelegate.m
 @@ -351,6 +351,8 @@ - (NSUInteger)supportedInterfaceOrientations
@@ -74,7 +74,7 @@ index 31b114a93..4ec673018 100644
  - (void)setWindow:(UIWindow *)window
  {
      /* Do nothing. */
-@@ -527,6 +556,21 @@ - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceAppl
+@@ -527,6 +556,42 @@ - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceAppl
 
  @end
 
@@ -85,6 +85,27 @@ index 31b114a93..4ec673018 100644
 +        [[SDLUIKitDelegate sharedAppDelegate] connectWindowScene:(UIWindowScene *)scene];
 +    }
 +}
++#if !TARGET_OS_TV
++- (void)sceneDidBecomeActive:(UIScene *)scene
++{
++    SDL_OnApplicationDidChangeStatusBarOrientation();
++}
++
++- (void)windowScene:(UIWindowScene *)windowScene didUpdateCoordinateSpace:(id<UICoordinateSpace>)previousCoordinateSpace
++    interfaceOrientation:(UIInterfaceOrientation)previousInterfaceOrientation
++    traitCollection:(UITraitCollection *)previousTraitCollection
++{
++    SDL_OnApplicationDidChangeStatusBarOrientation();
++}
++
++#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
++- (void)windowScene:(UIWindowScene *)windowScene didUpdateEffectiveGeometry:(UIWindowSceneGeometry *)previousGeometry
++{
++    SDL_OnApplicationDidChangeStatusBarOrientation();
++}
++#endif
++#endif
++
 +- (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)contexts
 +{
 +    for (UIOpenURLContext *context in contexts) {
@@ -138,6 +159,105 @@ index 0a96c6821..51f42b7a4 100644
      /* See the comment in the function definition. */
  #if defined(SDL_VIDEO_OPENGL_ES) || defined(SDL_VIDEO_OPENGL_ES2)
      UIKit_GL_RestoreCurrentContext();
+diff --git a/src/video/uikit/SDL_uikitmodes.h b/src/video/uikit/SDL_uikitmodes.h
+index e5b103a38..07ad5962e 100644
+--- a/src/video/uikit/SDL_uikitmodes.h
++++ b/src/video/uikit/SDL_uikitmodes.h
+@@ -41,6 +41,9 @@
+ @end
+
+ extern SDL_bool UIKit_IsDisplayLandscape(UIScreen *uiscreen);
++#if !TARGET_OS_TV
++extern UIInterfaceOrientation UIKit_GetInterfaceOrientation(void);
++#endif
+
+ extern int UIKit_InitModes(_THIS);
+ extern int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event);
+diff --git a/src/video/uikit/SDL_uikitmodes.m b/src/video/uikit/SDL_uikitmodes.m
+index 97c59c250..c7ffd1d02 100644
+--- a/src/video/uikit/SDL_uikitmodes.m
++++ b/src/video/uikit/SDL_uikitmodes.m
+@@ -351,11 +351,41 @@ void UIKit_DelDisplay(UIScreen *uiscreen)
+     }
+ }
+
++#if !TARGET_OS_TV
++/* Scene geometry replaces the status-bar orientation on modern iOS. */
++UIInterfaceOrientation UIKit_GetInterfaceOrientation(void)
++{
++    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
++        if (![scene isKindOfClass:UIWindowScene.class] ||
++            ![scene.session.role isEqualToString:UIWindowSceneSessionRoleApplication] ||
++            scene.activationState == UISceneActivationStateBackground) {
++            continue;
++        }
++
++        UIWindowScene *windowScene = (UIWindowScene *)scene;
++        UIInterfaceOrientation orientation;
++#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000
++        if (@available(iOS 26.0, *)) {
++            orientation = windowScene.effectiveGeometry.interfaceOrientation;
++        } else
++#endif
++        {
++            orientation = windowScene.interfaceOrientation;
++        }
++        if (orientation != UIInterfaceOrientationUnknown) {
++            return orientation;
++        }
++    }
++
++    return UIApplication.sharedApplication.statusBarOrientation;
++}
++#endif
++
+ SDL_bool UIKit_IsDisplayLandscape(UIScreen *uiscreen)
+ {
+ #if !TARGET_OS_TV
+     if (uiscreen == [UIScreen mainScreen]) {
+-        return UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation);
++        return UIInterfaceOrientationIsLandscape(UIKit_GetInterfaceOrientation());
+     } else
+ #endif /* !TARGET_OS_TV */
+     {
+@@ -525,7 +555,11 @@ void UIKit_QuitModes(_THIS)
+ #if !TARGET_OS_TV
+ void SDL_OnApplicationDidChangeStatusBarOrientation(void)
+ {
+-    BOOL isLandscape = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation);
++    UIInterfaceOrientation sceneOrientation = UIKit_GetInterfaceOrientation();
++    if (sceneOrientation == UIInterfaceOrientationUnknown) {
++        return;
++    }
++    BOOL isLandscape = UIInterfaceOrientationIsLandscape(sceneOrientation);
+     SDL_VideoDisplay *display = SDL_GetDisplay(0);
+
+     if (display) {
+@@ -550,7 +584,7 @@ void SDL_OnApplicationDidChangeStatusBarOrientation(void)
+             currentmode->h = height;
+         }
+
+-        switch ([UIApplication sharedApplication].statusBarOrientation) {
++        switch (sceneOrientation) {
+         case UIInterfaceOrientationPortrait:
+             orientation = SDL_ORIENTATION_PORTRAIT;
+             break;
+diff --git a/src/video/uikit/SDL_uikitvideo.m b/src/video/uikit/SDL_uikitvideo.m
+index f7aa3fd12..d3e887f5d 100644
+--- a/src/video/uikit/SDL_uikitvideo.m
++++ b/src/video/uikit/SDL_uikitvideo.m
+@@ -220,7 +220,10 @@ CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
+      * https://bugzilla.libsdl.org/show_bug.cgi?id=3505
+      * https://bugzilla.libsdl.org/show_bug.cgi?id=3465
+      * https://forums.developer.apple.com/thread/65337 */
+-    orient = [UIApplication sharedApplication].statusBarOrientation;
++    orient = UIKit_GetInterfaceOrientation();
++    if (orient == UIInterfaceOrientationUnknown) {
++        return frame;
++    }
+     landscape = UIInterfaceOrientationIsLandscape(orient) ||
+                     !(UIKit_GetSupportedOrientations(window) & (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown));
+     fullscreen = CGRectEqualToRect(screen.bounds, frame);
 diff --git a/src/video/uikit/SDL_uikitwindow.m b/src/video/uikit/SDL_uikitwindow.m
 index 0e0ea0577..114bc45fb 100644
 --- a/src/video/uikit/SDL_uikitwindow.m

@@ -135,8 +135,12 @@ void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
             float walletX, walletY;
             TwoShipWalletCenter(&walletX, &walletY);
+#if defined(__IOS__) && !defined(__TVOS__)
+            baseY = std::min(walletY * SCREEN_HEIGHT + 8.f * scale, SCREEN_HEIGHT - 6.f * scale);
+#else
             // The room texture includes transparent space beneath the drawn map.
             baseY = std::min(walletY * SCREEN_HEIGHT, SCREEN_HEIGHT - 10.f * scale) + 27;
+#endif
 #endif
         }
         *rectTop = baseY + offsetFromBaseY * scale;

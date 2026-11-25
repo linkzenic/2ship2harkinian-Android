@@ -152,7 +152,14 @@ UIFont* TouchFont(CGFloat size) {
     }
     anchors[30]=(1+mapRight)*.5f;
     anchors[31]=(1+(diamondBottom>0?diamondBottom:.89f))*.5f;
-    TwoShipIntegratedLayout(anchors.data(),_shown&&!_editing&&!_suspended&&!_menuVisible&&!(_state&1));
+    const bool active = _shown&&!_editing&&!_suspended&&!_menuVisible&&!(_state&1);
+    float footerTop=1.f;
+    for (auto& c : _layout.controls)
+        if (TouchHud::FooterControl(_config.style,c.key) && _placement.visible(c.key) &&
+            !_placement.positions.contains(c.key))
+            footerTop=std::min(footerTop,c.bounds.y/_layout.height);
+    TwoShipIntegratedFooterTop(footerTop);
+    TwoShipIntegratedLayout(anchors.data(),active);
 }
 - (BOOL)floating:(const TouchHud::Control&)c { return c.stick==0?_config.left:c.stick==1&&_config.right; }
 - (BOOL)pressed:(const std::string&)key { for(auto& [finger,k]:_fingers)if(k==key)return YES;return NO; }
@@ -206,20 +213,30 @@ UIFont* TouchFont(CGFloat size) {
     if(_suspended)return;
     CGContextRef context=UIGraphicsGetCurrentContext();float u=_layout.unit;
     if(_editing) { [Color(0x080b12,.94) setFill];UIRectFill(self.bounds); }
-    if(_config.style==3&&(_shown||_editing)&&(_editing||(!(_state&1)&&!_menuVisible))&&(_editing||_placement.visible("pad"))) {
-        auto pad=_layout.find("pad");if(pad) {
-            CGRect b=TouchRect(pad->bounds);float arm=b.size.width/3;
-            UIBezierPath* cross=[UIBezierPath bezierPath];
-            const CGPoint outline[]={{1,0},{2,0},{2,1},{3,1},{3,2},{2,2},{2,3},{1,3},{1,2},{0,2},{0,1},{1,1}};
-            [cross moveToPoint:CGPointMake(b.origin.x+outline[0].x*arm,b.origin.y+outline[0].y*arm)];
-            for(int i=1;i<12;i++)[cross addLineToPoint:CGPointMake(b.origin.x+outline[i].x*arm,b.origin.y+outline[i].y*arm)];
-            [cross closePath];cross.lineJoinStyle=kCGLineJoinRound;
-            [Color(0x626b78,_editing?(_placement.visible("pad")?.7:.2):_config.opacity*.7) setFill];[cross fill];
-            [Color(0x626b78,_config.opacity) setStroke];cross.lineWidth=1.5*u;[cross stroke];
+    if (_config.style==3 && (_editing || (_shown && !_menuVisible && !(_state&1))) &&
+        (_editing || _placement.visible("pad"))) {
+        if (auto* pad = _layout.find("pad")) {
+            bool hasItems=false;
+            for (auto& c : _layout.controls)
+                if (TouchHud::DpadDirection(c.key) && c.slot>=0 && _placement.visible(c.key) &&
+                    (_state & (1<<(8+c.slot)))) hasItems=true;
+            UIImage* art=[UIImage imageNamed:!_editing && hasItems ? @"ModernTouchDpadItems" : @"ModernTouchDpad"];
+            CGContextSaveGState(context);
+            if (!_editing) for (auto& c : _layout.controls) {
+                if (!TouchHud::DpadDirection(c.key) || _placement.visible(c.key)) continue;
+                UIBezierPath* clip=[UIBezierPath bezierPathWithRect:self.bounds];
+                [clip appendPath:[UIBezierPath bezierPathWithRect:TouchRect(c.bounds)]];
+                clip.usesEvenOddFillRule=YES;
+                [clip addClip];
+            }
+            [art drawInRect:TouchRect(pad->bounds) blendMode:kCGBlendModeNormal
+                alpha:_editing?(_placement.visible("pad")?.75f:.25f):_config.opacity];
+            CGContextRestoreGState(context);
         }
     }
     for(auto& c:_layout.controls) {
-        if(c.key=="pad")continue;
+        if (_config.style==3 && (c.key=="pad" || TouchHud::DpadDirection(c.key))) continue;
+        if (!_editing && _config.style==1 && c.stick==1) continue;
         bool visible=_placement.visible(c.key),down=[self pressed:c.key];
         if(!_editing&&(!visible||(((_state&1)||_menuVisible)&&c.key!="settings"&&c.key!="eye")))continue;
 

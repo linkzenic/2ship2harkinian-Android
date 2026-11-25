@@ -135,6 +135,11 @@ void TwoShipIntegratedCamera(int x,int y) {
 static std::atomic<int> touchScene{0}, touchContent{0};
 static std::mutex touchLayoutLock;
 static float touchAnchors[32]{};
+#if defined(__IOS__)
+static std::atomic<float> touchFooterTop{1.f};
+float TwoShipTouchFooterTop() { return touchFooterTop.load(); }
+void TwoShipIntegratedFooterTop(float y) { touchFooterTop.store(y); }
+#endif
 extern "C" void TwoShipWalletCenter(float* x, float* y) {
     std::lock_guard<std::mutex> guard(touchLayoutLock);
     *x = touchAnchors[30] > 0 ? touchAnchors[30] : .84f;
@@ -151,6 +156,10 @@ extern "C" int TwoShipTouchRect(int slot,float* x,float* y,float* size) {
     if (!touchActive || slot<0 || slot>=10) return 0;
     std::lock_guard<std::mutex> guard(touchLayoutLock);
     if (!touchActive) return 0;
+#if defined(__IOS__)
+    // The transition scales the framebuffer but not the UIKit controls.
+    if (gSaveContext.screenScaleFlag) return -1;
+#endif
     *x=touchAnchors[slot*3]; *y=touchAnchors[slot*3+1]; *size=touchAnchors[slot*3+2];
     touchContent.fetch_or(1 << (8+slot));
     return *size>0 ? 1 : -1;
