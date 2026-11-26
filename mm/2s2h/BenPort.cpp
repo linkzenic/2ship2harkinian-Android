@@ -52,6 +52,7 @@ CrowdControl* CrowdControl::Instance;
 #include <fast/resource/ResourceType.h>
 #include <BenGui/BenGui.hpp>
 #include <BenGui/BenMenu.h>
+#include "BenGui/HudEditor.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Enhancements.h"
@@ -71,11 +72,15 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/config/ConfigUpdaters.h"
 
 #ifdef __IOS__
+#include "../ios/TwoShipICloudSync.h"
 #if !defined(__TVOS__)
+#include "../ios/TwoShipCloudDrive.h"
+#include "../ios/TwoShipIOSSetup.h"
 #include "../ios/TwoShipIOSTouchControls.h"
 #endif
 #if defined(__TVOS__)
 #include "../ios/TwoShipTVOSFileServer.h"
+#include "../ios/TwoShipTVOSSetup.h"
 #endif
 #endif
 
@@ -226,6 +231,9 @@ OTRGlobals::OTRGlobals() {
                               portArchiveVersion.minor == gBuildVersionMinor &&
                               portArchiveVersion.patch == gBuildVersionPatch;
 
+#if defined(__IOS__)
+    TwoShipICloudSync_ApplyAtLaunch();
+#endif
     context->InitConfiguration();
     context->InitConsoleVariables();
 
@@ -242,6 +250,7 @@ OTRGlobals::OTRGlobals() {
         BTN_CUSTOM_OCARINA_PITCH_DOWN,
     }));
     context->InitControlDeck(controlDeck);
+    BenGui::InstallControllerHudBindings();
     context->InitResourceManager({ portArchivePath }, {}, 3, true);
     context->InitConsole();
 
@@ -259,7 +268,6 @@ OTRGlobals::OTRGlobals() {
     if (iosGyro->GetGyroMapping() == nullptr) {
         iosGyro->SetGyroMappingFromRawPress();
     }
-    TwoShipIOS_SetTouchControlsEnabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) == 0);
 #endif
 
     BenGui::SetupMenu();
@@ -369,8 +377,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 
     bool shouldRegen = VerifyArchiveVersion(DetectArchiveVersion("mm.o2r", true));
 #if defined(__IOS__)
-    // Existing iOS archives remain usable across this update. Keep them in
-    // place because archive generation is not part of the normal iOS flow.
+    // Keep existing Apple mobile archives in place when updating the app.
     shouldRegen = false;
 #endif
 
@@ -384,6 +391,17 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
     Extractor extract;
     PromptSteps promptStep = PS_FILE_CHECK;
     bool romsFromSearch = false;
+#if defined(__IOS__) && !defined(__TVOS__)
+    bool iosSetupPending = false;
+    bool iosPickingArchive = false;
+    const char* iosImportError = nullptr;
+#endif
+#if defined(__TVOS__)
+    const int controllerNavigation = CVarGetInteger(CVAR_IMGUI_CONTROLLER_NAV, -1);
+    CVarSetInteger(CVAR_IMGUI_CONTROLLER_NAV, 1);
+    bool startupTransfer = false;
+    bool setupPromptShown = false;
+#endif
     std::atomic<size_t> extractCount = 0, totalExtract = 0;
 
     std::string installPath = std::filesystem::absolute(Ship::Context::GetAppBundlePath()).string();
@@ -431,6 +449,29 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
 #endif
 
     while (!extractDone) {
+#if defined(__TVOS__)
+        if (setupPromptShown) {
+            const auto action = TwoShipTVOS_PollSetupAction();
+            if (action == TwoShipTVOSSetupAction::Waiting) {
+                goto render;
+            }
+            setupPromptShown = false;
+            if (action == TwoShipTVOSSetupAction::Exit) {
+                if (startupTransfer) TwoShipTVOSFileServer_Stop();
+                exit(0);
+            }
+            if (action == TwoShipTVOSSetupAction::Unavailable) {
+                goto render;
+            }
+            if (!startupTransfer) {
+                TwoShipTVOSFileServer_Start();
+                startupTransfer = true;
+                promptStep = PS_FIRST;
+            } else {
+                promptStep = PS_LOCAL;
+            }
+        }
+#endif
         if (BenGui::PopupsQueued() > 0 || extractionTask.has_value()) {
             goto render;
         }
@@ -577,15 +618,60 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                 switch (promptStep) {
                     case PS_FILE_CHECK: {
                         if (!std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("mm.o2r", appShortName))) {
+#if defined(__TVOS__)
+                            TwoShipTVOS_ShowSetupPrompt(
+                                "Use a phone or computer on the same network to send your game data.",
+                                "Start File Transfer");
+                            setupPromptShown = true;
+#elif defined(__IOS__)
+                            if (!iosSetupPending) {
+                                if (iosPickingArchive) {
+                                    TwoShipIOS_OpenArchivePicker();
+                                } else {
+                                    TwoShipIOS_ShowArchiveSetup(iosImportError);
+                                }
+                                iosSetupPending = true;
+                                goto render;
+                            }
+                            switch (TwoShipIOS_PollArchiveSetup(file)) {
+                                case TwoShipIOSSetupAction::Waiting:
+                                    goto render;
+                                case TwoShipIOSSetupAction::OpenPicker:
+                                    iosPickingArchive = true;
+                                    break;
+                                case TwoShipIOSSetupAction::ArchivePicked:
+                                    iosPickingArchive = false;
+                                    iosImportError = TwoShipIOS_ImportGameArchive(
+                                        file, Ship::Context::GetPathRelativeToAppDirectory("mm.o2r", appShortName));
+                                    break;
+                                case TwoShipIOSSetupAction::Cancelled:
+                                    iosPickingArchive = false;
+                                    iosImportError = nullptr;
+                                    break;
+                                case TwoShipIOSSetupAction::Exit:
+                                    exit(0);
+                                case TwoShipIOSSetupAction::Unavailable:
+                                    break;
+                            }
+                            iosSetupPending = false;
+                            goto render;
+#else
                             BenGui::RegisterPopup(
                                 "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
                                 [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
+#endif
                         } else {
                             extractStep = ES_VERIFY;
                         }
                         continue;
                     }
                     case PS_LOCAL: {
+#if defined(__TVOS__)
+                        if (std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("mm.o2r", appShortName))) {
+                            extractStep = ES_VERIFY;
+                            continue;
+                        }
+#endif
                         extract = Extractor();
                         extract.SetSearchPath(installPath);
                         extract.GetRoms(args);
@@ -596,16 +682,30 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                         romsFromSearch = !args.empty();
                         if (!args.empty()) {
                             promptStep = PS_WAIT;
+#if defined(__TVOS__)
+                            // The user chose Rescan after sending game data.
+                            extractStep = ES_EXTRACT_ARGS;
+#else
                             BenGui::RegisterPopup(
                                 "ROMs found", "ROMs found in application directory. Would you like to process them?",
                                 "Yes", "No", [&]() { extractStep = ES_EXTRACT_ARGS; },
                                 [&]() { promptStep = PS_FIRST; });
+#endif
                         } else {
                             promptStep = PS_FIRST;
                         }
                         continue;
                     }
                     case PS_FIRST: {
+#if defined(__TVOS__)
+                        char status[512] = {};
+                        TwoShipTVOSFileServer_GetStatus(status, sizeof(status));
+                        const std::string message = std::string(status) +
+                            "\n\nUpload mm.o2r or a supported ROM, then choose Rescan.";
+                        TwoShipTVOS_ShowSetupPrompt(message.c_str(), "Rescan");
+                        setupPromptShown = true;
+                        continue;
+#else
                         if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
                             promptStep = PS_FILE_CHECK;
                             continue;
@@ -618,6 +718,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
                             totalExtract = 0;
                         });
                         continue;
+#endif
                     }
                     default:
                         break;
@@ -706,6 +807,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
         ImGui::PopStyleColor(2);
     }
 
+#if defined(__TVOS__)
+    if (startupTransfer) {
+        TwoShipTVOSFileServer_Stop();
+    }
+    if (controllerNavigation == 0) {
+        CVarSetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0);
+    }
+#endif
 #ifdef __SWITCH__
     Ship::Switch::Init(Ship::PreInitPhase);
 #elif defined(__WIIU__)
@@ -1069,8 +1178,14 @@ extern "C" void InitOTR(int argc, char* argv[]) {
 #endif
     OTRGlobals::Instance = new OTRGlobals();
     OTRGlobals::Instance->RunExtract(argc, argv);
+#if defined(__IOS__) && !defined(__TVOS__)
+    TwoShipIOS_SetTouchControlsEnabled(CVarGetInteger("gSettings.TouchControls.Disabled", 0) == 0);
+#endif
 
     OTRGlobals::Instance->Initialize();
+#if defined(__IOS__)
+    TwoShipICloudSync_Start();
+#endif
 
     std::shared_ptr<Ship::Config> conf = OTRGlobals::Instance->context->GetConfig();
     conf->RegisterVersionUpdater(std::make_shared<Ben::ConfigVersion1Updater>());
@@ -1276,7 +1391,7 @@ extern "C" void Graph_StartFrame() {
 #endif
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__TVOS__)
 extern "C" void ResourceMgr_ReleaseGameStateTextures() {
     // Called on the game/render thread after actors and the state arena are destroyed.
     FrameInterpolation_ClearRecordings();

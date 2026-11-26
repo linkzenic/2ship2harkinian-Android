@@ -17,6 +17,11 @@ class HudEditorWindow : public Ship::GuiWindow {
     void UpdateElement() override{};
 };
 
+namespace BenGui {
+void DrawControllerHudOptions();
+void InstallControllerHudBindings();
+}
+
 extern "C" {
 #endif
 
@@ -54,6 +59,27 @@ typedef enum {
     HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT,
     HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT,
 } HudEditorElementMode;
+
+enum { CONTROLLER_HUD_ORIGINAL, CONTROLLER_HUD_RESTORATION, CONTROLLER_HUD_WIND_WAKER };
+enum {
+    CONTROLLER_HUD_RESTORATION_PLATE_SIZE = 16,
+    CONTROLLER_HUD_RESTORATION_DPAD_SIZE = 8,
+    CONTROLLER_HUD_RESTORATION_ZR_WIDTH = 17,
+    CONTROLLER_HUD_RESTORATION_ZR_HEIGHT = 7,
+    CONTROLLER_HUD_WIND_FACE_SIZE = 14,
+    CONTROLLER_HUD_WIND_A_SIZE = 18,
+    CONTROLLER_HUD_WIND_R_WIDTH = 21,
+    CONTROLLER_HUD_WIND_R_HEIGHT = 21,
+};
+int ControllerHud_GetStyle(void);
+bool ControllerHud_GetAnchor(HudEditorElementID id, s16* x, s16* y);
+float ControllerHud_GetScale(HudEditorElementID id);
+void ControllerHud_GetLabel(HudEditorElementID id, char* label, size_t capacity);
+const char* ControllerHud_GetArt(int style, const char* label);
+const char* ControllerHud_GetRestorationActionArt(int action, s16* width);
+const char* ControllerHud_GetRestorationLabelArt(const char* label, s16* width);
+int ControllerHud_GetDpadItem(int slot);
+const char* ControllerHud_GetRestorationInstrumentArt(int form);
 
 void HudEditor_OverrideNextElementMode(HudEditorElementMode mode);
 void HudEditor_SetActiveElement(HudEditorElementID id);

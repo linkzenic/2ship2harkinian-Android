@@ -35,6 +35,7 @@ SDL_Joystick* sJoystick = nullptr;
 int sJoystickIndex = -1;
 std::atomic_bool sMenuToggleRequested(false);
 std::atomic_bool sMenuVisible(false);
+std::atomic_bool sClassicTouchVisible(false);
 std::atomic_uint16_t sTouchButtons(0);
 std::atomic_uint16_t sPendingTouchButtons(0);
 std::atomic_int sTouchLeftX(0);
@@ -483,6 +484,7 @@ void SetAxis(int axis, CGFloat value) {
 }
 
 - (void)applyVisibility {
+    sClassicTouchVisible.store(!(_menuVisible ? _controlsHiddenBeforeMenu : _controlsHidden));
     for (UIView* view in _controls.subviews) {
         view.hidden = _controlsHidden;
     }
@@ -636,6 +638,7 @@ static void ApplyState() {
     }
     const bool integrated = sControlsDesired && TwoShipIOS_IntegratedTouchStyle() != 0;
     if (!sControlsDesired || integrated) {
+        sClassicTouchVisible.store(false);
         [sOverlay cancelInputs];
         [sOverlay removeFromSuperview];
         sOverlay = nil;
@@ -658,6 +661,8 @@ static void ApplyState() {
     [sOverlay setMenuVisible:sMenuVisible.load()];
     [window bringSubviewToFront:sOverlay];
 }
+
+extern "C" int TwoShipClassicTouchVisible() { return sClassicTouchVisible.load(); }
 
 void TwoShipIOS_RefreshOverlay() { ApplyState(); }
 void TwoShipIOS_RequestMenuToggle() { sMenuToggleRequested.store(true); }

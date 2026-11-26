@@ -27,6 +27,7 @@
     </array>
     <key>GCSupportsControllerUserInteraction</key>
     <true/>
+    @TWO_SHIP_CLOUDKIT_PLIST@
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.games</string>
     <key>NSBonjourServices</key>

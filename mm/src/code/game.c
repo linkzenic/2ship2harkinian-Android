@@ -14,7 +14,7 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__TVOS__)
 void ResourceMgr_ReleaseGameStateTextures(void);
 #endif
 
@@ -273,7 +273,7 @@ void GameState_Destroy(GameState* gameState) {
     THA_Destroy(&gameState->tha);
     GameAlloc_Cleanup(&gameState->alloc);
     gGameState = NULL;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__TVOS__)
     ResourceMgr_ReleaseGameStateTextures();
 #endif
 }

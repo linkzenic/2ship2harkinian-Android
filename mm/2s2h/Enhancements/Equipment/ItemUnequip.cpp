@@ -12,7 +12,7 @@ extern "C" {
 }
 
 #define CVAR_DPAD_NAME "gEnhancements.Dpad.DpadEquips"
-#define CVAR_DPAD CVarGetInteger(CVAR_DPAD_NAME, 0)
+#define CVAR_DPAD ControllerHud_DpadEquipsEnabled()
 
 extern bool IsBombArrowButton(s32 slot, bool isDpad);
 extern void SetBombArrowButton(s32 slot, bool state, bool isDpad);
@@ -149,4 +149,4 @@ void RegisterItemUnequip() {
 }
 
 static RegisterShipInitFunc initFunc(RegisterItemUnequip, { CVAR_NAME });
-static RegisterShipInitFunc initDpadPageSwitch(RegisterDpadPageSwitchPrevention, { CVAR_DPAD_NAME });
+static RegisterShipInitFunc initDpadPageSwitch(RegisterDpadPageSwitchPrevention, { CVAR_DPAD_NAME, "gHudEditor.Controller.Style" });

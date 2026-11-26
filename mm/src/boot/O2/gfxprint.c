@@ -255,19 +255,23 @@ void GfxPrint_PrintCharImpl(GfxPrint* this, u8 c) {
         tile = 0;
     }
 
+    const u16 extent = this->glyphSize * 4;
+    const u16 step = (8 << 10) / this->glyphSize;
+    const u16 shadow = this->glyphSize < 8 ? 2 : 4;
     if (this->flags & GFXP_FLAG_SHADOW) {
         gDPSetColor(this->dList++, G_SETPRIMCOLOR, 0);
 
-        gSPTextureRectangle(this->dList++, this->posX + 4, this->posY + 4, this->posX + 4 + 32, this->posY + 4 + 32,
-                            tile, assetOffsetX + (s << 6), t << 8, 1 << 10, 1 << 10);
+        gSPTextureRectangle(this->dList++, this->posX + shadow, this->posY + shadow,
+                            this->posX + shadow + extent, this->posY + shadow + extent,
+                            tile, assetOffsetX + (s << 6), t << 8, step, step);
 
         gDPSetColor(this->dList++, G_SETPRIMCOLOR, this->color.rgba);
     }
 
-    gSPTextureRectangle(this->dList++, this->posX, this->posY, this->posX + 32, this->posY + 32, tile,
-                        assetOffsetX + (s << 6), t << 8, 1 << 10, 1 << 10);
+    gSPTextureRectangle(this->dList++, this->posX, this->posY, this->posX + extent, this->posY + extent, tile,
+                        assetOffsetX + (s << 6), t << 8, step, step);
 
-    this->posX += 32;
+    this->posX += extent;
 }
 
 void GfxPrint_PrintChar(GfxPrint* this, u8 c) {
@@ -357,6 +361,7 @@ void GfxPrint_Init(GfxPrint* this) {
     this->baseX = 0;
     this->baseY = 0;
     this->color.rgba = 0;
+    this->glyphSize = 8;
 
     this->flags &= ~GFXP_FLAG_HIRAGANA;
     this->flags &= ~GFXP_FLAG_RAINBOW;

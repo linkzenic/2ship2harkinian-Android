@@ -1,4 +1,10 @@
 #include "SaveManager.h"
+#if defined(__IOS__)
+#include "ios/TwoShipICloudSync.h"
+#if !defined(__TVOS__)
+#include "ios/TwoShipCloudDrive.h"
+#endif
+#endif
 
 #include <fstream>
 #include <filesystem>
@@ -120,10 +126,20 @@ void SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::
     }
 
     try {
-        std::ofstream o(filePath);
+#if defined(__IOS__)
+        const auto staging = filePath.string() + ".tmp";
+        std::ofstream o(staging);
         o << std::setw(4) << j << std::endl;
         o.close();
-#ifdef __IOS__
+        if (!o) {
+            SPDLOG_ERROR("Failed to write save file");
+            return;
+        }
+        std::filesystem::rename(staging, filePath);
+        TwoShipICloudSync_SyncNow();
+#else
+        std::ofstream o(filePath);
+        o << std::setw(4) << j << std::endl;
 #endif
     } catch (...) { SPDLOG_ERROR("Failed to write save file"); }
 }

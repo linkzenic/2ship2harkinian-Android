@@ -1285,6 +1285,8 @@ public class MainActivity extends SDLActivity{
         button.animate().scaleX(scale).scaleY(scale).setDuration(60).start();
     }
 
+    private native void setClassicTouchVisible(boolean visible);
+
     private void applyTouchControlsVisibility() {
         if (overlayView == null) {
             return;
@@ -1296,10 +1298,11 @@ public class MainActivity extends SDLActivity{
             .75f+.25f*preferences.getInt("Size",1),new float[]{.15f,.35f,.55f,.75f,1f}[preferences.getInt("Opacity",2)],preferences.getInt("Transparent sticks",0)!=0);
         overlayView.setVisibility(touchControlsDisabled || touchStyle != 0 ? View.GONE : View.VISIBLE);
 
+        boolean controlsHidden = preferences.getBoolean(PREF_TOUCH_CONTROLS_HIDDEN, false);
         if (buttonGroup != null) {
-            boolean controlsHidden = preferences.getBoolean(PREF_TOUCH_CONTROLS_HIDDEN, false);
             buttonGroup.setVisibility(controlsHidden ? View.INVISIBLE : View.VISIBLE);
         }
+        setClassicTouchVisible(!touchControlsDisabled && touchStyle == 0 && !controlsHidden);
     }
 
     private void setupToggleButton(Button button, ViewGroup uiGroup){

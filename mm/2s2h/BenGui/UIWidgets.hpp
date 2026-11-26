@@ -1099,10 +1099,12 @@ bool ComboboxWithSearch(const char* label, T* value, const std::unordered_map<T,
         ImGuiID filterId = ImGui::GetID("##search");
         ImGuiTextFilter& filter = filters[filterId];
         
-        // Focus search input when dropdown first opens
+#if !defined(__ANDROID__) && !defined(__IOS__) && !defined(__TVOS__)
+        // On a desktop, open the filter ready for typing.
         if (ImGui::IsWindowAppearing()) {
             ImGui::SetKeyboardFocusHere();
         }
+#endif
         
         ImGui::SetNextItemWidth(-FLT_MIN);
         filter.Draw("##search", -FLT_MIN);

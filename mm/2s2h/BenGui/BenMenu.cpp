@@ -26,6 +26,10 @@
 #endif
 #if defined(__IOS__)
 #include "ios/TwoShipSaveBridgeSync.h"
+#include "ios/TwoShipICloudSync.h"
+#if !defined(__TVOS__)
+#include "ios/TwoShipCloudDrive.h"
+#endif
 #endif
 #if defined(__ANDROID__)
 #include <jni.h>
@@ -85,20 +89,26 @@ static const std::unordered_map<int32_t, const char*> touchFaceButtonLayoutMap =
     { 2, "GC Layout" },
 };
 
-static void ApplyAndroidMenuScale(float scale) {
-    if (scale < 1.0f) {
-        scale = 1.0f;
-    } else if (scale > 3.0f) {
-        scale = 3.0f;
-    }
+#endif
 
+#if defined(__ANDROID__) || defined(__IOS__)
+void BenGui::BenMenu::ApplyMobileMenuScale(bool force) {
+#if defined(__ANDROID__)
+    const float scale = std::clamp(CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f), 1.0f, 3.0f);
+#elif defined(__TVOS__)
+    const float scale = std::clamp(CVarGetFloat("gSettings.Menu.TVOSScale", 1.5f), 1.0f, 2.0f);
+#else
+    const float scale = std::clamp(CVarGetFloat("gSettings.Menu.IOSScale", 0.65f), 0.35f, 1.0f);
+#endif
+    ImGuiIO& io = ImGui::GetIO();
+    if (!force && io.FontGlobalScale == scale) return;
     ImGuiStyle& style = ImGui::GetStyle();
     style.FramePadding = ImVec2(4.0f * scale, 6.0f * scale);
     style.ItemSpacing = ImVec2(8.0f * scale, 6.0f * scale);
     style.ItemInnerSpacing = ImVec2(4.0f * scale, 4.0f * scale);
     style.ScrollbarSize = 14.0f * scale;
     style.GrabMinSize = 12.0f * scale;
-    ImGui::GetIO().FontGlobalScale = scale;
+    io.FontGlobalScale = scale;
 }
 
 #endif
@@ -209,6 +219,11 @@ extern "C" void TwoShipMergeTouch(OSContPad* pad) {
     if (s) { pad->stick_x = (int8_t)s; pad->stick_y = (int8_t)(s >> 8); }
 }
 #if defined(__ANDROID__)
+static std::atomic<bool> classicTouchVisible{true};
+extern "C" int TwoShipClassicTouchVisible(void) { return classicTouchVisible.load(); }
+extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_setClassicTouchVisible(JNIEnv*, jobject, jboolean visible) {
+    classicTouchVisible.store(visible);
+}
 extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchButton(JNIEnv*,jobject,jint m,jboolean down) { TwoShipIntegratedButton(m,down); }
 extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchStick(JNIEnv*,jobject,jint x,jint y) { TwoShipIntegratedStick(x,y); }
 extern "C" JNIEXPORT void JNICALL Java_com_twoshipfork_mm_MainActivity_integratedTouchReset(JNIEnv*,jobject) { TwoShipIntegratedReset(); }
@@ -746,6 +761,84 @@ void BenMenu::AddSettings() {
 #else
     AddSidebarEntry("Settings", "General", 2);
 #endif
+#if defined(__IOS__)
+    AddSidebarEntry("Settings", "iCloud", 1);
+    WidgetPath cloud = { "Settings", "iCloud", SECTION_COLUMN_1 };
+    AddWidget(cloud, "iCloud Sync", WIDGET_CUSTOM).CustomFunction([](WidgetInfo&) {
+        bool shared = TwoShipICloudSync_Enabled();
+        if (ImGui::Checkbox("Sync", &shared)) TwoShipICloudSync_SetEnabled(shared);
+        ImGui::BeginDisabled(!shared);
+        const auto drawCategory = [](const char* label, TwoShipCloud::Category category) {
+            bool enabled = TwoShipICloudSync_CategoryEnabled(category);
+            if (ImGui::Checkbox(label, &enabled)) TwoShipICloudSync_SetCategoryEnabled(category, enabled);
+        };
+        drawCategory("JSON", TwoShipCloud::Category::JSON);
+        drawCategory("Saves", TwoShipCloud::Category::Saves);
+        drawCategory("Mods", TwoShipCloud::Category::Mods);
+        if (ImGui::Button("Check iCloud Now")) TwoShipICloudSync_SyncNow();
+        ImGui::EndDisabled();
+        char status[1024] = {};
+#if !defined(__TVOS__)
+        ImGui::TextUnformatted("iCloud Drive");
+        if (shared) TwoShipCloudDriveStatus(status, sizeof(status));
+        ImGui::TextWrapped("%s", shared ? status : "Sync is off.");
+        ImGui::Spacing();
+#endif
+        ImGui::TextUnformatted("Apple TV Sync");
+        TwoShipICloudSync_GetStatus(status, sizeof(status));
+        ImGui::TextWrapped("%s", status);
+        auto conflicts = TwoShipICloudSync_GetConflicts();
+        if (!conflicts.empty()) {
+            const auto title = std::to_string(conflicts.size()) + " iCloud " +
+                (conflicts.size() == 1 ? "conflict" : "conflicts") + "###CloudConflictPicker";
+            if (ImGui::CollapsingHeader(title.c_str())) {
+                static std::string selected;
+                static std::string revision;
+                static bool useCloud = false;
+                static bool changed = false;
+                ImGui::TextWrapped("Choose the copy to keep. Both versions are backed up in Conflicts.");
+                for (const auto& conflict : conflicts) {
+                    ImGui::PushID(conflict.path.c_str());
+                    const auto slot = TwoShipCloud::SaveSlotGroup(conflict.path);
+                    if (!slot.empty()) ImGui::Text("Save Slot %c and backup", slot[10]);
+                    else if (conflict.path == "2ship2harkinian.json") ImGui::TextUnformatted("Game Settings");
+                    else ImGui::TextWrapped("%s", conflict.path.c_str());
+                    if (conflict.queued) {
+                        ImGui::TextUnformatted("Choice saved. Restart to apply it and sync.");
+                    } else if (selected == conflict.path) {
+                        ImGui::TextWrapped("Use %s? The other copy will stay backed up.", useCloud ? "the iCloud copy" : "this device's copy");
+                        if (ImGui::Button("Confirm Choice")) {
+                            changed = !TwoShipICloudSync_ChooseConflict(selected, revision, useCloud);
+                            selected.clear();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Cancel")) selected.clear();
+                    } else {
+                        ImGui::BeginDisabled(!conflict.canKeepLocal);
+                        if (ImGui::Button("Keep This Device's Copy")) {
+                            selected = conflict.path; revision = conflict.revision; useCloud = false;
+                        }
+                        ImGui::EndDisabled();
+                        ImGui::SameLine();
+                        ImGui::BeginDisabled(!conflict.canUseCloud);
+                        if (ImGui::Button("Use iCloud Copy")) {
+                            selected = conflict.path; revision = conflict.revision; useCloud = true;
+                        }
+                        ImGui::EndDisabled();
+                        if (!conflict.canKeepLocal || !conflict.canUseCloud)
+                            ImGui::TextWrapped("An incomplete save and backup cannot replace a complete copy.");
+                    }
+                    ImGui::Spacing();
+                    ImGui::PopID();
+                }
+                if (changed) ImGui::TextWrapped("That conflict changed. Check iCloud again before choosing.");
+            }
+        }
+        ImGui::TextWrapped("Mods include HD texture packs and may use substantial iCloud storage.");
+        ImGui::TextWrapped("Incoming files apply on restart. Conflicts keep both versions.");
+        ImGui::TextWrapped("Deleting a synced file in iCloud Drive removes it from both devices after the iPhone syncs and the apps restart.");
+    });
+#endif
     WidgetPath path = { "Settings", "General", SECTION_COLUMN_1 };
     AddWidget(path, "Menu Theme", WIDGET_CVAR_COMBOBOX)
         .CVar("gSettings.Menu.Theme")
@@ -761,7 +854,7 @@ void BenMenu::AddSettings() {
     AddWidget(path, "Menu Scale: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gSettings.Menu.AndroidScale")
         .Callback([](WidgetInfo& info) {
-            ApplyAndroidMenuScale(CVarGetFloat("gSettings.Menu.AndroidScale", 1.45f));
+            ApplyMobileMenuScale();
         })
         .Options(FloatSliderOptions()
                      .DefaultValue(1.45f)
@@ -821,10 +914,12 @@ void BenMenu::AddSettings() {
         })
         .Options(CheckboxOptions().Tooltip(
             "Displays the Search menu as a sidebar entry in Settings instead of in the header."));
+#if !defined(__ANDROID__) && !defined(__IOS__) && !defined(__TVOS__)
     AddWidget(path, "Search Input Autofocus", WIDGET_CVAR_CHECKBOX)
         .CVar("gSettings.Menu.SearchAutofocus")
         .Options(CheckboxOptions().Tooltip(
             "Search input box gets autofocus when visible. Does not affect using other widgets."));
+#endif
     AddWidget(path, "Alt Assets Tab hotkey", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Mods.AlternateAssetsHotkey")
         .Options(
@@ -1203,6 +1298,10 @@ void BenMenu::AddSettings() {
     AddWidget(path,"Touch Button Assignments",WIDGET_SEPARATOR_TEXT).PreFunc(integratedOnly);
     AddWidget(path,"Assign Touch Buttons",WIDGET_CUSTOM).PreFunc(integratedOnly).CustomFunction(DrawTouchAssignments);
 #endif
+
+    path = { "Settings", "Controller HUD", SECTION_COLUMN_1 };
+    AddSidebarEntry("Settings", "Controller HUD", 1);
+    AddWidget(path, "Controller HUD Settings", WIDGET_CUSTOM).CustomFunction([](WidgetInfo&) { DrawControllerHudOptions(); });
 
     path.sidebarName = "Overlay";
     path.column = SECTION_COLUMN_1;
@@ -2910,6 +3009,10 @@ void BenMenu::InitElement() {
 }
 
 void BenMenu::UpdateElement() {
+#if defined(__TVOS__)
+    // Read the slider's saved value before drawing the next menu frame.
+    ApplyMobileMenuScale();
+#endif
     Ship::Menu::UpdateElement();
 }
 

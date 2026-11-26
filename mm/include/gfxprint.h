@@ -31,7 +31,8 @@ typedef struct GfxPrint {
     /* 0x0E */ u8 baseY;
     /* 0x0F */ u8 flags;
     /* 0x10 */ Color_RGBA8_u32 color;
-    /* 0x14 */ UNK_TYPE1 unk_14[0x1C]; // unused
+    /* 0x14 */ u8 glyphSize;
+    /* 0x15 */ UNK_TYPE1 unk_15[0x1B]; // unused
 } GfxPrint; // size = 0x30
 
 void GfxPrint_Setup(GfxPrint* this);

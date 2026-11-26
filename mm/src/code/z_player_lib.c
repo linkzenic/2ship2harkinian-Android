@@ -4,6 +4,7 @@
  */
 
 #include "global.h"
+#include "2s2h/BenGui/HudEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
 #include "objects/gameplay_keep/gameplay_keep.h"
@@ -778,7 +779,10 @@ ItemId Player_Dpad_GetItemOnButton(PlayState* play, Player* player, DpadEquipSlo
         return ITEM_NONE;
     }
 
-    ItemId item = DPAD_BTN_ITEM(slot);
+    ItemId item = (gSaveContext.shipSaveContext.dpad.status[slot] != BTN_DISABLED ||
+                   gSaveContext.hudVisibility == HUD_VISIBILITY_A_B_C)
+                      ? ControllerHud_GetDpadItem(slot)
+                      : ITEM_NONE;
     GameInteractor_Should(VB_GET_ITEM_ON_BUTTON, item, slot, &item);
     return item;
 }
@@ -889,7 +893,7 @@ PlayerItemAction func_80123810(PlayState* play) {
         }
     }
     // #region 2S2H [Dpad]
-    if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+    if (ControllerHud_DpadEquipsEnabled()) {
         for (i = 0; i < ARRAY_COUNT(sDItemButtons); i++) {
             if (CHECK_BTN_ALL(CONTROLLER1(&play->state)->press.button, sDItemButtons[i])) {
                 itemId = Player_Dpad_GetItemOnButton(play, player, i);

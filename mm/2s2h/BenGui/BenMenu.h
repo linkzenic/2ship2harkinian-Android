@@ -18,6 +18,10 @@ class BenMenu : public Ship::Menu {
     void UpdateElement() override;
     void Draw() override;
 
+#if defined(__ANDROID__) || defined(__IOS__)
+    static void ApplyMobileMenuScale(bool force = false);
+#endif
+
     void AddSidebarEntry(std::string sectionName, std::string sidbarName, uint32_t columnCount);
     WidgetInfo& AddWidget(WidgetPath& pathInfo, std::string widgetName, WidgetType widgetType);
     void AddMenuElements();

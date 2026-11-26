@@ -650,8 +650,13 @@ typedef enum {
 
 #define BTN_DPAD_EQUIP (GameInteractor_Dpad(GI_DPAD_EQUIP, BTN_DPAD))
 
+#ifdef __cplusplus
+extern "C"
+#endif
+int ControllerHud_DpadEquipsEnabled(void);
+
 #define CHECK_BTN_DPAD(input)                                                                                   \
-    (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0) &&                                                      \
+    (ControllerHud_DpadEquipsEnabled() &&                                                      \
      (CHECK_BTN_ALL(input, BTN_DRIGHT) || CHECK_BTN_ALL(input, BTN_DLEFT) || CHECK_BTN_ALL(input, BTN_DDOWN) || \
       CHECK_BTN_ALL(input, BTN_DUP)))
 

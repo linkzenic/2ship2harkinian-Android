@@ -34,6 +34,15 @@ std::string disabledTempTooltip;
 const char* disabledTooltip;
 bool disabledValue = false;
 
+static bool SearchAutofocusEnabled() {
+#if defined(__ANDROID__) || defined(__IOS__) || defined(__TVOS__)
+    // Ignore saved desktop preferences or older mobile settings.
+    return false;
+#else
+    return CVarGetInteger("gSettings.Menu.SearchAutofocus", 0);
+#endif
+}
+
 bool operator==(Color_RGB8 const& l, Color_RGB8 const& r) noexcept {
     return l.r == r.r && l.g == r.g && l.b == r.b;
 }
@@ -494,7 +503,7 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                     menuSearch.Clear();
                 }
                 ImGui::SameLine();
-                if (CVarGetInteger("gSettings.Menu.SearchAutofocus", 0) &&
+                if (SearchAutofocusEnabled() &&
                     ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive() &&
                     !ImGui::IsMouseClicked(0)) {
                     ImGui::SetKeyboardFocusHere(0);
@@ -670,7 +679,7 @@ void Menu::DrawElement() {
     ImVec2 pos = window->DC.CursorPos;
     float centerX = pos.x + windowWidth / 2 - (style.ItemSpacing.x * (menuEntries.size() + 1));
     std::vector<ImVec2> headerSizes;
-    bool autoFocus = CVarGetInteger("gSettings.Menu.SearchAutofocus", 0);
+    const bool autoFocus = SearchAutofocusEnabled();
     bool headerSearch = !CVarGetInteger("gSettings.Menu.SidebarSearch", 0);
     float buttonWidth = (ImGui::CalcTextSize(ICON_FA_TIMES_CIRCLE) + style.FramePadding * 2).x;
     float reservedHeaderButtonWidth = buttonWidth * 3 + style.ItemSpacing.x * 3;

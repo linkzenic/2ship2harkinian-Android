@@ -1,13 +1,38 @@
-# 2 Ship 2 Harkinian — Android and iOS
+# 2 Ship 2 Harkinian Ports
 
-Android port of 2 Ship 2 Harkinian, based on the HarbourMasters project and forked from Waterdish's original Android port.
+Android, iOS, and tvOS ports of 2 Ship 2 Harkinian, based on the HarbourMasters
+project and Waterdish's original Android port. All three downloads are published
+together on the [releases page](https://github.com/linkzenic/2ship2harkinian-Ports/releases).
 
 Original repository: [https://github.com/HarbourMasters/2ship2harkinian
 ](https://github.com/2ship2harkinian/2ship2harkinian)
 
-Current Android release: **v5.0.1-android.4**
+Public iOS and tvOS IPAs are unsigned and do not include game data. Sign them
+with your own setup before installing. When updating, reuse the same app
+identifier and signing setup so your data remains available.
 
-The iOS port is being tested from the shared source tree. iOS workflow artifacts are unsigned test builds, not releases. To preserve your data when updating on iPhone, sign with the same app identifier and signing setup; do not uninstall first.
+[Controller HUD presets and artwork credits](docs/controller-hud.md)
+
+## iPhone and iPad setup
+
+1. On a computer, use a compatible desktop build of 2 Ship 2 Harkinian to generate
+   `mm.o2r` from your own supported Majora's Mask ROM.
+2. Sign and sideload the iOS IPA, and make your `mm.o2r` available in the Files app.
+3. Open 2 Ship, tap **Import mm.o2r**, and select the generated archive. The app
+   copies it into its own data folder. It does not generate the archive on iOS.
+
+If your own signed IPA already contains `mm.o2r`, or the file is already in the
+app's Documents folder, 2 Ship skips import. The public IPA includes the
+`2ship.o2r` support archive, but not `mm.o2r`.
+
+## Apple TV setup
+
+Generate `mm.o2r` on a computer. Include it in your own IPA before signing, or
+install the app and choose **Start File Transfer** at first launch. Follow the
+on-screen directions from a phone or computer on the same local network.
+
+iCloud sync on iOS and tvOS requires an iCloud-enabled build and compatible
+signing and iCloud configuration.
 
 ## Android
 
@@ -17,7 +42,7 @@ Tested on: Android 13
 
 ## Installation
 
-1. Install the APK from the releases page: https://github.com/linkzenic/2ship2harkinian-Android/releases
+1. Install the APK from the [releases page](https://github.com/linkzenic/2ship2harkinian-Ports/releases).
 2. Open the app once so it can create the data folder and copy bundled support files.
 3. When prompted, select your legally obtained `MM.z64` ROM so the app can generate `mm.o2r`.
 4. Subsequent launches should start directly into the game.

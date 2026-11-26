@@ -144,9 +144,14 @@ void WriteStatus(NSString* status) {
 }
 
 NSString* DocumentsPath() {
+#if TARGET_OS_TV
+    NSString* caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES).firstObject;
+    return [(caches ?: NSTemporaryDirectory()) stringByAppendingPathComponent:@"2Ship 2 Harkinian"];
+#else
     NSArray<NSString*>* paths =
         NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     return paths.firstObject ?: [NSHomeDirectory() stringByAppendingPathComponent:@"Documents"];
+#endif
 }
 
 NSArray<NSString*>* SaveNames() {

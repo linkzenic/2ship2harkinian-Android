@@ -347,6 +347,7 @@ void Inventory_UpdateItem(struct PlayState* play, s16 slot, s16 item);
 void Interface_SetAButtonDoAction(struct PlayState* play, u16 aButtonDoAction);
 void Interface_SetBButtonPlayerDoAction(struct PlayState* play, s16 bButtonDoAction);
 void Interface_SetTatlCall(struct PlayState* play, u16 tatlCallState);
+bool Interface_RestorationTatlPromptActive(struct PlayState* play);
 void Interface_SetBButtonInterfaceDoAction(struct PlayState* play, s16 bButtonDoAction);
 s32 Health_ChangeBy(struct PlayState* play, s16 healthChange);
 void Health_GiveHearts(s16 hearts);

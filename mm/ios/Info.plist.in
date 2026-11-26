@@ -37,8 +37,8 @@
     <true/>
     <key>UIFileSharingEnabled</key>
     <true/>
-    <key>TwoShipCloudKitProvisionedBuild</key>
-    <true/>
+    @TWO_SHIP_CLOUDKIT_PLIST@
+    @TWO_SHIP_DRIVE_PLIST@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>UILaunchScreen</key>

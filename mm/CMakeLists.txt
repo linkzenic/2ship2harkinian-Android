@@ -105,18 +105,25 @@ if(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
     list(APPEND ship__
         ios/TwoShipSaveBridgeSync.h
         ios/TwoShipSaveBridgeSync.mm
+        ios/TwoShipICloudSync.mm
+        ios/TwoShipCloudFiles.mm
         ios/Assets.xcassets
     )
     if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
         list(APPEND ship__
             ios/TwoShipTVOSFileServer.h
             ios/TwoShipTVOSFileServer.mm
+            ios/TwoShipTVOSSetup.h
+            ios/TwoShipTVOSSetup.mm
         )
     else()
         list(APPEND ship__
+            ios/TwoShipIOSSetup.h
+            ios/TwoShipIOSSetup.mm
             ios/TwoShipIOSTouchControls.h
             ios/TwoShipIOSTouchControls.mm
             ios/TwoShipIntegratedTouchControls.mm
+            ios/TwoShipCloudDrive.mm
         )
         set(TOUCH_FONTS_DIR "${CMAKE_SOURCE_DIR}/Android/app/src/main/assets/fonts")
         set(TOUCH_FONTS
@@ -258,11 +265,29 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "iOS|tvOS")
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${TWO_SHIP_DEVICE_FAMILY}"
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "${TWO_SHIP_APP_ICON}"
     )
+    option(TWO_SHIP_ENABLE_ICLOUD "Build with 2 Ship iCloud capabilities; matching profiles are required" OFF)
+    set(TWO_SHIP_ICLOUD_CONTAINER_ID "iCloud.com.linkzenic.2ship.shared" CACHE STRING "Shared 2 Ship CloudKit container")
+    set(TWO_SHIP_ICLOUD_DOCUMENTS_CONTAINER_ID "iCloud.com.linkzenic.2ship.documents" CACHE STRING "iPhone iCloud Drive container")
+    set(TWO_SHIP_CLOUDKIT_PLIST "")
+    set(TWO_SHIP_DRIVE_PLIST "")
+    if(TWO_SHIP_ENABLE_ICLOUD)
+        set(TWO_SHIP_CLOUDKIT_PLIST "<key>TwoShipCloudKitContainer</key><string>${TWO_SHIP_ICLOUD_CONTAINER_ID}</string>")
+        if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
+            set(cloudEntitlements TwoShipTVOS)
+        else()
+            set(cloudEntitlements TwoShipIOS)
+            set(TWO_SHIP_DRIVE_PLIST "<key>NSUbiquitousContainers</key><dict><key>${TWO_SHIP_ICLOUD_DOCUMENTS_CONTAINER_ID}</key><dict><key>NSUbiquitousContainerIsDocumentScopePublic</key><true/><key>NSUbiquitousContainerName</key><string>2 Ship 2 Harkinian</string><key>NSUbiquitousContainerSupportedFolderLevels</key><string>Any</string></dict></dict>")
+        endif()
+        configure_file("ios/${cloudEntitlements}.entitlements.in" "${CMAKE_CURRENT_BINARY_DIR}/${cloudEntitlements}.entitlements" @ONLY)
+        set_property(TARGET ${PROJECT_NAME} PROPERTY XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS
+            "${CMAKE_CURRENT_BINARY_DIR}/${cloudEntitlements}.entitlements")
+    endif()
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CloudKit")
     if(TWO_SHIP_APPLE_TARGET STREQUAL "tvos")
         target_compile_definitions(${PROJECT_NAME} PRIVATE "__TVOS__")
         target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Network" "-framework UIKit")
     else()
-        target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreText")
+        target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreText" "-framework UniformTypeIdentifiers" libzip::zip)
     endif()
     if(NOT SIGN_LIBRARY)
         set_target_properties(${PROJECT_NAME} PROPERTIES

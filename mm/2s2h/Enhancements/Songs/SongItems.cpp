@@ -52,7 +52,7 @@ template <typename F> static void ForEachEquipSlot(F&& func) {
     for (int i = EQUIP_SLOT_C_LEFT; i <= EQUIP_SLOT_C_RIGHT; i++) {
         func(i, false);
     }
-    if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+    if (ControllerHud_DpadEquipsEnabled()) {
         for (int i = EQUIP_SLOT_D_RIGHT; i <= EQUIP_SLOT_D_UP; i++) {
             func(i, true);
         }
@@ -219,7 +219,7 @@ static void HandleSongEquip(PauseContext* pauseCtx) {
     s16 cursorPoint = pauseCtx->cursorPoint[PAUSE_QUEST];
     bool isHoveringSong = false;
 
-    bool isDpadEquipsEnabled = CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0);
+    bool isDpadEquipsEnabled = ControllerHud_DpadEquipsEnabled();
 
     if ((cursorPoint >= QUEST_SONG_SONATA && cursorPoint <= QUEST_SONG_SUN) ||
         cursorPoint == QUEST_SONG_LULLABY_INTRO) {
@@ -428,7 +428,7 @@ static void RegisterSongItems() {
         u16 button = va_arg(args, int);
         Input* input = &gPlayState->state.input[0];
 
-        if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0) && CHECK_BTN_ALL(input->cur.button, button)) {
+        if (ControllerHud_DpadEquipsEnabled() && CHECK_BTN_ALL(input->cur.button, button)) {
             PauseContext* pauseCtx = &gPlayState->pauseCtx;
 
             if (pauseCtx->pageIndex == PAUSE_QUEST && pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG &&

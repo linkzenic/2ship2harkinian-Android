@@ -219,7 +219,7 @@ void KaleidoScope_DrawMaskSelect(PlayState* play) {
         }
     }
     // #region 2S2H [Dpad]
-    if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+    if (ControllerHud_DpadEquipsEnabled()) {
         for (i = EQUIP_SLOT_D_RIGHT; i <= EQUIP_SLOT_D_UP; i++, j += 4) {
             if (DPAD_GET_CUR_FORM_BTN_ITEM(i) != ITEM_NONE) {
                 ItemId item = DPAD_GET_CUR_FORM_BTN_ITEM(i);
@@ -590,7 +590,7 @@ void KaleidoScope_UpdateMaskCursor(PlayState* play) {
                         }
                     }
                     // #region 2S2H [Dpad]
-                    else if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+                    else if (ControllerHud_DpadEquipsEnabled()) {
                         if (CHECK_BTN_ALL(input->press.button, BTN_DRIGHT)) {
                             if (((Player_GetCurMaskItemId(play) != ITEM_NONE) &&
                                  (Player_GetCurMaskItemId(play) == DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_RIGHT))) ||
@@ -647,7 +647,7 @@ void KaleidoScope_UpdateMaskCursor(PlayState* play) {
                         pauseCtx->equipTargetCBtn = PAUSE_EQUIP_C_RIGHT;
                     }
                     // #region 2S2H [Dpad]
-                    else if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+                    else if (ControllerHud_DpadEquipsEnabled()) {
                         if (CHECK_BTN_ALL(input->press.button, BTN_DRIGHT)) {
                             pauseCtx->equipTargetCBtn = PAUSE_EQUIP_D_RIGHT;
                         } else if (CHECK_BTN_ALL(input->press.button, BTN_DLEFT)) {
@@ -1235,7 +1235,7 @@ void KaleidoScope_UpdateMaskEquip(PlayState* play) {
                 Interface_LoadItemIconImpl(play, EQUIP_SLOT_C_RIGHT);
             }
             // #region 2S2H [Dpad]
-            else if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+            else if (ControllerHud_DpadEquipsEnabled()) {
                 KaleidoScope_UpdateDpadMaskEquip(play);
             }
             // #endregion

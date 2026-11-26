@@ -2917,7 +2917,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
         }
         // #region 2S2H [Dpad]
         for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-            if ((DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_PICTOGRAPH_BOX) || (msgCtx->msgMode != MSGMODE_NONE)) {
+            if ((ControllerHud_GetDpadItem(j) != ITEM_PICTOGRAPH_BOX) || (msgCtx->msgMode != MSGMODE_NONE)) {
                 if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                     restoreHudVisibility = true;
                 }
@@ -2995,9 +2995,9 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
             }
             // #region 2S2H [Dpad]
             for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-                if ((DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_MASK_FIERCE_DEITY) ||
-                    ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                     (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK))) {
+                if ((ControllerHud_GetDpadItem(j) == ITEM_MASK_FIERCE_DEITY) ||
+                    ((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                     (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK))) {
                     if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED) {
                         restoreHudVisibility = true;
                         gSaveContext.shipSaveContext.dpad.status[j] = BTN_ENABLED;
@@ -3026,8 +3026,8 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
             }
             // #region 2S2H [Dpad]
             for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-                if ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
-                    (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_ZORA)) {
+                if ((ControllerHud_GetDpadItem(j) >= ITEM_MASK_DEKU) &&
+                    (ControllerHud_GetDpadItem(j) <= ITEM_MASK_ZORA)) {
                     if (gSaveContext.shipSaveContext.dpad.status[j] != BTN_DISABLED) {
                         restoreHudVisibility = true;
                     }
@@ -3182,11 +3182,11 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
         }
         // #region 2S2H [Dpad]
         for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER, DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_MASK_ZORA,
-                                      (s32)DPAD_GET_CUR_FORM_BTN_ITEM(j))) {
+            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER, ControllerHud_GetDpadItem(j) != ITEM_MASK_ZORA,
+                                      (s32)ControllerHud_GetDpadItem(j))) {
                 if (Player_GetEnvironmentalHazard(play) == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) {
-                    if (!((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                          (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK))) {
+                    if (!((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                          (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK))) {
                         if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                             restoreHudVisibility = true;
                         }
@@ -3236,7 +3236,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
         }
         // #region 2S2H [Dpad]
         for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-            if (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_LENS_OF_TRUTH) {
+            if (ControllerHud_GetDpadItem(j) != ITEM_LENS_OF_TRUTH) {
                 if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                     restoreHudVisibility = true;
                 }
@@ -3508,7 +3508,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
             // #region 2S2H [Dpad]
             for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
                 // Individual D button
-                ItemId itemId = DPAD_GET_CUR_FORM_BTN_ITEM(j);
+                ItemId itemId = ControllerHud_GetDpadItem(j);
                 if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId],
                                           &itemId)) {
                     // Item not usable in current playerForm
@@ -3524,7 +3524,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                     }
                 } else if (player->currentMask == PLAYER_MASK_GIANT) {
                     // Currently wearing Giant's Mask
-                    if (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_MASK_GIANT) {
+                    if (ControllerHud_GetDpadItem(j) != ITEM_MASK_GIANT) {
                         if (gSaveContext.shipSaveContext.dpad.status[j] != BTN_DISABLED) {
                             gSaveContext.shipSaveContext.dpad.status[j] = BTN_DISABLED;
                             restoreHudVisibility = true;
@@ -3533,7 +3533,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                         restoreHudVisibility = true;
                         gSaveContext.shipSaveContext.dpad.status[j] = BTN_ENABLED;
                     }
-                } else if (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_MASK_GIANT) {
+                } else if (ControllerHud_GetDpadItem(j) == ITEM_MASK_GIANT) {
                     // Giant's Mask is equipped
                     if (play->sceneId != SCENE_INISIE_BS) {
                         if (gSaveContext.shipSaveContext.dpad.status[j] != BTN_DISABLED) {
@@ -3544,7 +3544,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                         restoreHudVisibility = true;
                         gSaveContext.shipSaveContext.dpad.status[j] = BTN_ENABLED;
                     }
-                } else if (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_MASK_FIERCE_DEITY) {
+                } else if (ControllerHud_GetDpadItem(j) == ITEM_MASK_FIERCE_DEITY) {
                     // Fierce Deity's Mask is equipped
                     u8 vanillaSceneConditionResult =
                         (play->sceneId != SCENE_MITURIN_BS) && (play->sceneId != SCENE_HAKUGIN_BS) &&
@@ -3562,22 +3562,22 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 } else {
                     // End of special item cases. Apply restrictions to buttons
                     if (interfaceCtx->restrictions.tradeItems != 0) {
-                        if (((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MOONS_TEAR) &&
-                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
-                            ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) ||
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_OCARINA_OF_TIME)) {
+                        if (((ControllerHud_GetDpadItem(j) >= ITEM_MOONS_TEAR) &&
+                             (ControllerHud_GetDpadItem(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
+                            ((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                             (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK)) ||
+                            (ControllerHud_GetDpadItem(j) == ITEM_OCARINA_OF_TIME)) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                                 restoreHudVisibility = true;
                             }
                             gSaveContext.shipSaveContext.dpad.status[j] = BTN_DISABLED;
                         }
                     } else if (interfaceCtx->restrictions.tradeItems == 0) {
-                        if (((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MOONS_TEAR) &&
-                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
-                            ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) ||
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_OCARINA_OF_TIME)) {
+                        if (((ControllerHud_GetDpadItem(j) >= ITEM_MOONS_TEAR) &&
+                             (ControllerHud_GetDpadItem(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
+                            ((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                             (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK)) ||
+                            (ControllerHud_GetDpadItem(j) == ITEM_OCARINA_OF_TIME)) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3586,16 +3586,16 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                     }
 
                     if (interfaceCtx->restrictions.masks != 0) {
-                        if ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) {
+                        if ((ControllerHud_GetDpadItem(j) >= ITEM_MASK_DEKU) &&
+                            (ControllerHud_GetDpadItem(j) <= ITEM_MASK_GIANT)) {
                             if (!gSaveContext.shipSaveContext.dpad.status[j]) { // == BTN_ENABLED
                                 restoreHudVisibility = true;
                             }
                             gSaveContext.shipSaveContext.dpad.status[j] = BTN_DISABLED;
                         }
                     } else if (interfaceCtx->restrictions.masks == 0) {
-                        if ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) {
+                        if ((ControllerHud_GetDpadItem(j) >= ITEM_MASK_DEKU) &&
+                            (ControllerHud_GetDpadItem(j) <= ITEM_MASK_GIANT)) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3604,14 +3604,14 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                     }
 
                     if (interfaceCtx->restrictions.pictoBox != 0) {
-                        if (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_PICTOGRAPH_BOX) {
+                        if (ControllerHud_GetDpadItem(j) == ITEM_PICTOGRAPH_BOX) {
                             if (!gSaveContext.shipSaveContext.dpad.status[j]) { // == BTN_ENABLED
                                 restoreHudVisibility = true;
                             }
                             gSaveContext.shipSaveContext.dpad.status[j] = BTN_DISABLED;
                         }
                     } else if (interfaceCtx->restrictions.pictoBox == 0) {
-                        if (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_PICTOGRAPH_BOX) {
+                        if (ControllerHud_GetDpadItem(j) == ITEM_PICTOGRAPH_BOX) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3620,14 +3620,14 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                     }
 
                     if (interfaceCtx->restrictions.all != 0) {
-                        if (!((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MOONS_TEAR) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
-                            !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_OCARINA_OF_TIME) &&
-                            !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_PICTOGRAPH_BOX)) {
+                        if (!((ControllerHud_GetDpadItem(j) >= ITEM_MOONS_TEAR) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
+                            !((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK)) &&
+                            (ControllerHud_GetDpadItem(j) != ITEM_OCARINA_OF_TIME) &&
+                            !((ControllerHud_GetDpadItem(j) >= ITEM_MASK_DEKU) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_MASK_GIANT)) &&
+                            (ControllerHud_GetDpadItem(j) != ITEM_PICTOGRAPH_BOX)) {
 
                             if ((gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED)) {
                                 restoreHudVisibility = true;
@@ -3635,14 +3635,14 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                             }
                         }
                     } else if (interfaceCtx->restrictions.all == 0) {
-                        if (!((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MOONS_TEAR) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
-                            !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_OCARINA_OF_TIME) &&
-                            !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
-                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_PICTOGRAPH_BOX)) {
+                        if (!((ControllerHud_GetDpadItem(j) >= ITEM_MOONS_TEAR) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
+                            !((ControllerHud_GetDpadItem(j) >= ITEM_BOTTLE) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_OBABA_DRINK)) &&
+                            (ControllerHud_GetDpadItem(j) != ITEM_OCARINA_OF_TIME) &&
+                            !((ControllerHud_GetDpadItem(j) >= ITEM_MASK_DEKU) &&
+                              (ControllerHud_GetDpadItem(j) <= ITEM_MASK_GIANT)) &&
+                            (ControllerHud_GetDpadItem(j) != ITEM_PICTOGRAPH_BOX)) {
 
                             if ((gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED)) {
                                 restoreHudVisibility = true;
@@ -4949,7 +4949,7 @@ s32 Inventory_ConsumeFairy(PlayState* play) {
                 }
             }
             // #region 2S2H [Dpad]
-            if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+            if (ControllerHud_DpadEquipsEnabled()) {
                 for (u8 dpadBtn = EQUIP_SLOT_D_RIGHT; dpadBtn <= EQUIP_SLOT_D_UP; dpadBtn++) {
                     if (DPAD_GET_CUR_FORM_BTN_ITEM(dpadBtn) == ITEM_FAIRY) {
                         DPAD_SET_CUR_FORM_BTN_ITEM(dpadBtn, ITEM_BOTTLE);
@@ -5118,6 +5118,15 @@ void Interface_SetTatlCall(PlayState* play, u16 tatlCallState) {
             interfaceCtx->tatlCalling = false;
         }
     }
+}
+
+bool Interface_RestorationTatlPromptActive(PlayState* play) {
+    if (!play->interfaceCtx.tatlCalling || ControllerHud_GetStyle() != CONTROLLER_HUD_RESTORATION) return false;
+    return !IS_PAUSED(&play->pauseCtx) && !Play_InCsMode(play) && play->csCtx.state == CS_STATE_IDLE &&
+           play->msgCtx.msgMode == MSGMODE_NONE && sPictoState == PICTO_BOX_STATE_OFF &&
+           gSaveContext.hudVisibility != HUD_VISIBILITY_NONE &&
+           gSaveContext.hudVisibility != HUD_VISIBILITY_NONE_ALT &&
+           gSaveContext.hudVisibility != HUD_VISIBILITY_A_HEARTS_MAGIC_WITH_OVERWRITE;
 }
 
 /**
@@ -5549,7 +5558,7 @@ void Magic_Update(PlayState* play) {
                      (BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_C_DOWN) != ITEM_LENS_OF_TRUTH) &&
                      (BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_C_RIGHT) != ITEM_LENS_OF_TRUTH) &&
                      //  #region 2S2H [Dpad]
-                     (!CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0) ||
+                     (!ControllerHud_DpadEquipsEnabled() ||
                       (DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_RIGHT) != ITEM_LENS_OF_TRUTH) &&
                           (DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_LEFT) != ITEM_LENS_OF_TRUTH) &&
                           (DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_DOWN) != ITEM_LENS_OF_TRUTH) &&
@@ -5636,6 +5645,50 @@ void Magic_Update(PlayState* play) {
     }
 }
 
+static void Magic_DrawMeterOutline(PlayState* play, s16 y) {
+    const s16 capacity = gSaveContext.magicCapacity;
+    s16 edges[] = { 18, 26, 26 + capacity, 34 + capacity };
+    s16 height = 16;
+
+    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_MAGIC_METER);
+    if (HudEditor_IsActiveElementHidden()) {
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_NONE);
+        return;
+    }
+    if (HudEditor_ShouldOverrideDraw()) {
+        // Each segment starts where the previous one ends, even at fractional HUD scales.
+        const s16 originalY = y;
+        for (s32 i = 0; i < ARRAY_COUNT(edges); ++i) {
+            y = originalY;
+            HudEditor_ModifyRectPosValues(&edges[i], &y);
+        }
+        s16 unusedWidth = 0;
+        HudEditor_ModifyRectSizeValues(&unusedWidth, &height);
+    }
+    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_NONE);
+    if (height <= 0) return;
+
+    const s16 alpha = play->interfaceCtx.magicAlpha;
+    const s16 yStep = (16 << 10) / height;
+    OPEN_DISPS(play->state.gfxCtx);
+    for (s32 i = 0; i < 3; ++i) {
+        const s16 width = edges[i + 1] - edges[i];
+        if (width <= 0) continue;
+        const s16 xStep = ((i == 1 ? capacity : 8) << 10) / width;
+        if (i == 2) {
+            OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadowOffset(
+                OVERLAY_DISP, gMagicMeterEndTex, 8, 16, edges[i], y, width, height, xStep, yStep,
+                sMagicMeterOutlinePrimRed, sMagicMeterOutlinePrimGreen, sMagicMeterOutlinePrimBlue, alpha, 3, 0x100);
+        } else {
+            OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadow(
+                OVERLAY_DISP, i == 1 ? gMagicMeterMidTex : gMagicMeterEndTex, i == 1 ? 24 : 8, 16,
+                edges[i], y, width, height, xStep, yStep,
+                sMagicMeterOutlinePrimRed, sMagicMeterOutlinePrimGreen, sMagicMeterOutlinePrimBlue, alpha);
+        }
+    }
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 void Magic_DrawMeter(PlayState* play) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     s16 magicBarY;
@@ -5653,20 +5706,7 @@ void Magic_DrawMeter(PlayState* play) {
 
         gDPSetEnvColor(OVERLAY_DISP++, 100, 50, 50, 255);
 
-        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_MAGIC_METER);
-        OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadow(
-            OVERLAY_DISP, gMagicMeterEndTex, 8, 16, 18, magicBarY, 8, 16, 1 << 10, 1 << 10, sMagicMeterOutlinePrimRed,
-            sMagicMeterOutlinePrimGreen, sMagicMeterOutlinePrimBlue, interfaceCtx->magicAlpha);
-        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_MAGIC_METER);
-        OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadow(OVERLAY_DISP, gMagicMeterMidTex, 24, 16, 26, magicBarY,
-                                                     ((void)0, gSaveContext.magicCapacity), 16, 1 << 10, 1 << 10,
-                                                     sMagicMeterOutlinePrimRed, sMagicMeterOutlinePrimGreen,
-                                                     sMagicMeterOutlinePrimBlue, interfaceCtx->magicAlpha);
-        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_MAGIC_METER);
-        OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadowOffset(
-            OVERLAY_DISP, gMagicMeterEndTex, 8, 16, ((void)0, gSaveContext.magicCapacity) + 26, magicBarY, 8, 16,
-            1 << 10, 1 << 10, sMagicMeterOutlinePrimRed, sMagicMeterOutlinePrimGreen, sMagicMeterOutlinePrimBlue,
-            interfaceCtx->magicAlpha, 3, 0x100);
+        Magic_DrawMeterOutline(play, magicBarY);
 
         gDPPipeSync(OVERLAY_DISP++);
         gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, 0, 0, 0, PRIMITIVE, PRIMITIVE,
@@ -5873,6 +5913,173 @@ void Interface_SetOrthoView(InterfaceContext* interfaceCtx) {
     View_ApplyOrthoToOverlay(&interfaceCtx->view);
 }
 
+static void Interface_DrawControllerTextureRect(PlayState* play, const char* art, s16 x, s16 y, s16 width, s16 height,
+                                                s16 alpha) {
+    if (!alpha || !art) return;
+    OPEN_DISPS(play->state.gfxCtx);
+    gDPPipeSync(OVERLAY_DISP++);
+    gDPSetTextureFilter(OVERLAY_DISP++, G_TF_BILERP);
+    gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, alpha);
+    // The resource carries the PNG's actual dimensions. The tile stays 32x32 in HUD coordinates.
+    gDPLoadTextureBlock(OVERLAY_DISP++, art, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32,
+                        0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
+    gSPWideTextureRectangle(OVERLAY_DISP++, x * 4, y * 4, (x + width) * 4, (y + height) * 4,
+                            G_TX_RENDERTILE, 0, 0, (32 << 10) / width, (32 << 10) / height);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+static void Interface_DrawControllerTexture(PlayState* play, const char* art, s16 x, s16 y, s16 size, s16 alpha) {
+    Interface_DrawControllerTextureRect(play, art, x, y, size, size, alpha);
+}
+
+static bool Interface_DrawRestorationAction(PlayState* play, HudEditorElementID id, TexturePtr texture, s16 alpha) {
+    if (ControllerHud_GetStyle() != CONTROLLER_HUD_RESTORATION || gSaveContext.options.language != LANGUAGE_ENG) {
+        return false;
+    }
+    s16 x, y;
+    if (!ControllerHud_GetAnchor(id, &x, &y)) return false;
+    HudEditor_SetActiveElement(id);
+    if (HudEditor_IsActiveElementHidden()) return true;
+    for (int action = 0; action < ARRAY_COUNT(doActionTbl); ++action) {
+        if (texture != doActionTbl[action]) continue;
+        s16 width;
+        const char* art = ControllerHud_GetRestorationActionArt(action, &width);
+        if (art == NULL) return false;
+        Interface_DrawControllerTextureRect(play, art, x + (CONTROLLER_HUD_RESTORATION_PLATE_SIZE - width) / 2,
+                                            y + 4, width, 6, alpha);
+        return true;
+    }
+    return false;
+}
+
+static s16 Interface_ControllerPlateSize(HudEditorElementID id, bool wind) {
+    if (!wind) return id == HUD_EDITOR_ELEMENT_C_RIGHT ? CONTROLLER_HUD_RESTORATION_ZR_WIDTH :
+                                                       CONTROLLER_HUD_RESTORATION_PLATE_SIZE;
+    if (id == HUD_EDITOR_ELEMENT_A) return CONTROLLER_HUD_WIND_A_SIZE;
+    if (id == HUD_EDITOR_ELEMENT_C_RIGHT) return CONTROLLER_HUD_WIND_R_WIDTH;
+    return CONTROLLER_HUD_WIND_FACE_SIZE;
+}
+
+static void Interface_RestorationDpadItemCenter(s16 button, s16* x, s16* y) {
+    static const s16 dx[] = { 13, -13, 0, 0 };
+    static const s16 dy[] = { 0, 0, 13, -13 };
+    ControllerHud_GetAnchor(HUD_EDITOR_ELEMENT_D_PAD, x, y);
+    *x += dx[button];
+    *y += dy[button];
+}
+
+static void Interface_DrawControllerAmmoDigits(PlayState* play, s16 x, s16 y, int tens, int ones, s16 size) {
+    OPEN_DISPS(play->state.gfxCtx);
+    for (int digit = tens ? 0 : 1; digit < 2; ++digit) {
+        const s16 px = x + digit * (size - 1);
+        gDPLoadTextureBlock(OVERLAY_DISP++, gAmmoDigitTextures[digit ? ones : tens], G_IM_FMT_IA,
+                            G_IM_SIZ_8b, 8, 8, 0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
+        gSPWideTextureRectangle(OVERLAY_DISP++, px * 4, y * 4, (px + size) * 4, (y + size) * 4,
+                                G_TX_RENDERTILE, 0, 0, (8 << 10) / size, (8 << 10) / size);
+    }
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+static const char* Interface_WindWakerGlyph(HudEditorElementID id, const char* label) {
+    if (!label[0] || (label[1] == '\0' && strchr("<>^v", label[0]))) return NULL;
+    // The third C slot is a small shoulder-shaped plate, not another face button.
+    if (id == HUD_EDITOR_ELEMENT_C_RIGHT && strcmp(label, "R") && strcmp(label, "ZR") && strcmp(label, "ZL")) {
+        return NULL;
+    }
+    return ControllerHud_GetArt(CONTROLLER_HUD_WIND_WAKER, label);
+}
+
+static void Interface_DrawControllerButton(PlayState* play, HudEditorElementID id, s16 alpha, int style) {
+    s16 x, y;
+    if (!alpha || !ControllerHud_GetAnchor(id, &x, &y)) return;
+    HudEditor_SetActiveElement(id);
+    if (HudEditor_IsActiveElementHidden()) return;
+
+    const bool wind = style == CONTROLLER_HUD_WIND_WAKER;
+    const s16 size = Interface_ControllerPlateSize(id, wind);
+    const char* art = NULL;
+    if (wind) {
+        char label[5];
+        ControllerHud_GetLabel(id, label, sizeof(label));
+        art = Interface_WindWakerGlyph(id, label);
+        if (!art) {
+            art = ControllerHud_GetArt(style, id == HUD_EDITOR_ELEMENT_A ? "action-plate" :
+                                               id == HUD_EDITOR_ELEMENT_C_RIGHT ? "extra-plate" : "");
+        }
+    } else {
+        art = ControllerHud_GetArt(style, id == HUD_EDITOR_ELEMENT_C_RIGHT ? "extra-plate" : "");
+    }
+    if (art) {
+        const bool shoulder = wind && id == HUD_EDITOR_ELEMENT_C_RIGHT;
+        const s16 height = shoulder ? CONTROLLER_HUD_WIND_R_HEIGHT :
+                           id == HUD_EDITOR_ELEMENT_C_RIGHT ? CONTROLLER_HUD_RESTORATION_ZR_HEIGHT : size;
+        Interface_DrawControllerTextureRect(play, art, x, y - (shoulder ? 1 : 0), size, height, alpha);
+        return;
+    }
+
+    if (!wind && id == HUD_EDITOR_ELEMENT_C_RIGHT) return; // Do not substitute a circular plate.
+    const s16 step = (32 << 10) / size;
+    const s16 color = wind ? 180 : 75;
+    OPEN_DISPS(play->state.gfxCtx);
+    gDPPipeSync(OVERLAY_DISP++);
+    gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, color, color, color, alpha);
+    gDPLoadTextureBlock(OVERLAY_DISP++, gButtonBackgroundTex, G_IM_FMT_IA, G_IM_SIZ_8b, 32, 32,
+                        0, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
+    gSPWideTextureRectangle(OVERLAY_DISP++, x * 4, y * 4, (x + size) * 4, (y + size) * 4,
+                            G_TX_RENDERTILE, 0, 0, step, step);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+static void Interface_DrawControllerLabel(PlayState* play, HudEditorElementID id, s16 alpha, s16 offsetY) {
+    s16 x, y;
+    if (!alpha || !ControllerHud_GetAnchor(id, &x, &y)) return;
+    HudEditor_SetActiveElement(id);
+    if (HudEditor_IsActiveElementHidden()) return;
+
+    char label[5];
+    ControllerHud_GetLabel(id, label, sizeof(label));
+    if (!label[0]) return;
+    const int style = ControllerHud_GetStyle();
+    const bool wind = style == CONTROLLER_HUD_WIND_WAKER;
+    const bool restorationShoulder = !wind && id == HUD_EDITOR_ELEMENT_C_RIGHT;
+    const size_t len = strlen(label);
+    const char direction = label[len - 1];
+    if (strchr("<>^v", direction)) {
+        const char arrow[] = {direction, '\0'};
+        const s16 size = 6;
+        Interface_DrawControllerTexture(play, ControllerHud_GetArt(style, arrow),
+                                        x + (wind ? 7 : restorationShoulder ? 1 : 4),
+                                        y + (wind ? 4 : -2), size, alpha);
+        return;
+    }
+    if (wind && Interface_WindWakerGlyph(id, label)) return; // The plate already contains this glyph.
+    if (!wind) {
+        s16 width;
+        const char* glyph = ControllerHud_GetRestorationLabelArt(label, &width);
+        if (glyph) {
+            width = MAX(3, (width * 4 + 2) / 5);
+            const s16 labelX = x + (restorationShoulder ? 1 :
+                                          (CONTROLLER_HUD_RESTORATION_PLATE_SIZE - width) / 2);
+            const s16 labelY = y + (id == HUD_EDITOR_ELEMENT_C_UP ? offsetY : -2);
+            Interface_DrawControllerTextureRect(play, glyph, labelX, labelY, width, 4, alpha);
+            return;
+        }
+    }
+    const s16 glyphSize = wind ? 8 : 5;
+    x += restorationShoulder ? 1 : (Interface_ControllerPlateSize(id, wind) - glyphSize * (s16)len) / 2;
+
+    OPEN_DISPS(play->state.gfxCtx);
+    OPEN_PRINTER(OVERLAY_DISP);
+    printer.glyphSize = glyphSize;
+    GfxPrint_SetColor(&printer, wind ? 40 : 255, wind ? 40 : 255, wind ? 40 : 150, alpha);
+    GfxPrint_SetPosPx(&printer, x, y + (wind ? 5 : id == HUD_EDITOR_ELEMENT_C_UP ? offsetY : -2));
+    GfxPrint_Printf(&printer, "%s", label);
+    CLOSE_PRINTER(printer, OVERLAY_DISP);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 void Interface_DrawItemButtons(PlayState* play) {
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
     extern int TwoShipTouchHudActive(void);
@@ -5913,46 +6120,68 @@ void Interface_DrawItemButtons(PlayState* play) {
     gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
 
     // #region 2S2H [Dpad]
-    if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+    const int controllerStyle = ControllerHud_GetStyle();
+    if (ControllerHud_DpadEquipsEnabled()) {
         s16 dpadAlpha =
             MAX(MAX(MAX(interfaceCtx->shipInterface.dpad.dRightAlpha, interfaceCtx->shipInterface.dpad.dLeftAlpha),
                     interfaceCtx->shipInterface.dpad.dDownAlpha),
                 interfaceCtx->shipInterface.dpad.dUpAlpha);
         HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
-        OVERLAY_DISP =
-            Gfx_DrawTexRectIA16_DropShadowOverride(OVERLAY_DISP, gDPadTex, 32, 32, 271, 55, 32, 32, 1024, 1024, 255,
-                                                   255, 255, dpadAlpha, COSMETIC_ID("Buttons.DPad"));
+        if (controllerStyle) {
+            s16 x, y;
+            if (!HudEditor_IsActiveElementHidden() && ControllerHud_GetAnchor(HUD_EDITOR_ELEMENT_D_PAD, &x, &y)) {
+                const bool wind = controllerStyle == CONTROLLER_HUD_WIND_WAKER;
+                // Grow the Wind Waker cross around its old center; item anchors stay fixed.
+                const char* dpadArt = Interface_RestorationTatlPromptActive(play) ? "Tatl-Dpad" : "Dpad";
+                Interface_DrawControllerTexture(play, ControllerHud_GetArt(controllerStyle, dpadArt),
+                                                x - (wind ? 2 : CONTROLLER_HUD_RESTORATION_DPAD_SIZE / 2),
+                                                y - (wind ? 2 : CONTROLLER_HUD_RESTORATION_DPAD_SIZE / 2),
+                                                wind ? 19 : CONTROLLER_HUD_RESTORATION_DPAD_SIZE,
+                                                MAX(dpadAlpha, interfaceCtx->bAlpha));
+            }
+        } else {
+            OVERLAY_DISP = Gfx_DrawTexRectIA16_DropShadowOverride(OVERLAY_DISP, gDPadTex, 32, 32, 271, 55,
+                32, 32, 1024, 1024, 255, 255, 255, dpadAlpha, COSMETIC_ID("Buttons.DPad"));
+        }
         gDPPipeSync(OVERLAY_DISP++);
     }
     // #endregion
 
-    // B Button Color & Texture
-    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_B);
-    OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadowOverride(
-        OVERLAY_DISP, gButtonBackgroundTex, 32, 32, sBCButtonXPositions[EQUIP_SLOT_B],
-        sBCButtonYPositions[EQUIP_SLOT_B], sBCButtonSizes[EQUIP_SLOT_B], sBCButtonSizes[EQUIP_SLOT_B],
-        sBCButtonScales[EQUIP_SLOT_B] * 2, sBCButtonScales[EQUIP_SLOT_B] * 2, 100, 255, 120, interfaceCtx->bAlpha,
-        COSMETIC_ID("Buttons.B"));
-    gDPPipeSync(OVERLAY_DISP++);
+    if (controllerStyle) {
+        Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_B, interfaceCtx->bAlpha, controllerStyle);
+        Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_C_LEFT, interfaceCtx->cLeftAlpha, controllerStyle);
+        Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_C_DOWN, interfaceCtx->cDownAlpha, controllerStyle);
+        Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_C_RIGHT, interfaceCtx->cRightAlpha, controllerStyle);
+    } else {
+        // B Button Color & Texture
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_B);
+        OVERLAY_DISP = Gfx_DrawTexRectIA8_DropShadowOverride(
+            OVERLAY_DISP, gButtonBackgroundTex, 32, 32, sBCButtonXPositions[EQUIP_SLOT_B],
+            sBCButtonYPositions[EQUIP_SLOT_B], sBCButtonSizes[EQUIP_SLOT_B], sBCButtonSizes[EQUIP_SLOT_B],
+            sBCButtonScales[EQUIP_SLOT_B] * 2, sBCButtonScales[EQUIP_SLOT_B] * 2, 100, 255, 120, interfaceCtx->bAlpha,
+            COSMETIC_ID("Buttons.B"));
+        gDPPipeSync(OVERLAY_DISP++);
 
-    // C-Left Button Color & Texture
-    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_LEFT);
-    OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
-        OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_LEFT], sBCButtonYPositions[EQUIP_SLOT_C_LEFT],
-        sBCButtonSizes[EQUIP_SLOT_C_LEFT], sBCButtonSizes[EQUIP_SLOT_C_LEFT], sBCButtonScales[EQUIP_SLOT_C_LEFT] * 2,
-        sBCButtonScales[EQUIP_SLOT_C_LEFT] * 2, 255, 240, 0, interfaceCtx->cLeftAlpha, COSMETIC_ID("Buttons.CLeft"));
-    // C-Down Button Color & Texture
-    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_DOWN);
-    OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
-        OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_DOWN], sBCButtonYPositions[EQUIP_SLOT_C_DOWN],
-        sBCButtonSizes[EQUIP_SLOT_C_DOWN], sBCButtonSizes[EQUIP_SLOT_C_DOWN], sBCButtonScales[EQUIP_SLOT_C_DOWN] * 2,
-        sBCButtonScales[EQUIP_SLOT_C_DOWN] * 2, 255, 240, 0, interfaceCtx->cDownAlpha, COSMETIC_ID("Buttons.CDown"));
-    // C-Right Button Color & Texture
-    HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_RIGHT);
-    OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
-        OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_RIGHT], sBCButtonYPositions[EQUIP_SLOT_C_RIGHT],
-        sBCButtonSizes[EQUIP_SLOT_C_RIGHT], sBCButtonSizes[EQUIP_SLOT_C_RIGHT], sBCButtonScales[EQUIP_SLOT_C_RIGHT] * 2,
-        sBCButtonScales[EQUIP_SLOT_C_RIGHT] * 2, 255, 240, 0, interfaceCtx->cRightAlpha, COSMETIC_ID("Buttons.CRight"));
+        // C-Left Button Color & Texture
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_LEFT);
+        OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
+            OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_LEFT], sBCButtonYPositions[EQUIP_SLOT_C_LEFT],
+            sBCButtonSizes[EQUIP_SLOT_C_LEFT], sBCButtonSizes[EQUIP_SLOT_C_LEFT], sBCButtonScales[EQUIP_SLOT_C_LEFT] * 2,
+            sBCButtonScales[EQUIP_SLOT_C_LEFT] * 2, 255, 240, 0, interfaceCtx->cLeftAlpha, COSMETIC_ID("Buttons.CLeft"));
+        // C-Down Button Color & Texture
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_DOWN);
+        OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
+            OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_DOWN], sBCButtonYPositions[EQUIP_SLOT_C_DOWN],
+            sBCButtonSizes[EQUIP_SLOT_C_DOWN], sBCButtonSizes[EQUIP_SLOT_C_DOWN], sBCButtonScales[EQUIP_SLOT_C_DOWN] * 2,
+            sBCButtonScales[EQUIP_SLOT_C_DOWN] * 2, 255, 240, 0, interfaceCtx->cDownAlpha, COSMETIC_ID("Buttons.CDown"));
+        // C-Right Button Color & Texture
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_RIGHT);
+        OVERLAY_DISP = Gfx_DrawRect_DropShadowOverride(
+            OVERLAY_DISP, sBCButtonXPositions[EQUIP_SLOT_C_RIGHT], sBCButtonYPositions[EQUIP_SLOT_C_RIGHT],
+            sBCButtonSizes[EQUIP_SLOT_C_RIGHT], sBCButtonSizes[EQUIP_SLOT_C_RIGHT], sBCButtonScales[EQUIP_SLOT_C_RIGHT] * 2,
+            sBCButtonScales[EQUIP_SLOT_C_RIGHT] * 2, 255, 240, 0, interfaceCtx->cRightAlpha, COSMETIC_ID("Buttons.CRight"));
+
+    }
 
     if (!IS_PAUSE_STATE_GAMEOVER(pauseCtx)) {
         if (IS_PAUSED(&play->pauseCtx)) {
@@ -5999,7 +6228,8 @@ void Interface_DrawItemButtons(PlayState* play) {
         }
     }
 
-    if (interfaceCtx->tatlCalling && !IS_PAUSED(&play->pauseCtx) && (play->csCtx.state == CS_STATE_IDLE) &&
+    if (controllerStyle != CONTROLLER_HUD_RESTORATION && interfaceCtx->tatlCalling &&
+        !IS_PAUSED(&play->pauseCtx) && (play->csCtx.state == CS_STATE_IDLE) &&
         (sPictoState == PICTO_BOX_STATE_OFF)) {
         if (sCUpInvisible == 0) {
             // C-Up Button Texture, Color & Label (Tatl Text)
@@ -6017,7 +6247,11 @@ void Interface_DrawItemButtons(PlayState* play) {
             }
 
             HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_C_UP);
-            OVERLAY_DISP = Gfx_DrawRect_DropShadow(OVERLAY_DISP, 254, 16, 16, 16, 2 << 10, 2 << 10, 255, 240, 0, temp);
+            if (controllerStyle) {
+                Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_C_UP, temp, controllerStyle);
+            } else {
+                OVERLAY_DISP = Gfx_DrawRect_DropShadow(OVERLAY_DISP, 254, 16, 16, 16, 2 << 10, 2 << 10, 255, 240, 0, temp);
+            }
 
             gDPPipeSync(OVERLAY_DISP++);
             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, temp);
@@ -6038,7 +6272,7 @@ void Interface_DrawItemButtons(PlayState* play) {
                     // All of this information was derived from the original call to gSPTextureRectangle below
                     s16 rectLeft = 0x03DC / 4;
                     s16 rectTop = 0x0048 / 4;
-                    s16 rectWidth = 0x045C / 4;
+                    s16 rectWidth = controllerStyle ? 32 : 0x045C / 4;
                     s16 rectHeight = (0x0078 / 4) - rectTop;
                     s16 dsdx = 512;
                     s16 dtdy = 512;
@@ -6055,6 +6289,7 @@ void Interface_DrawItemButtons(PlayState* play) {
                 gSPTextureRectangle(OVERLAY_DISP++, 247 << 2, 18 << 2, (247 + 32) << 2, (18 + 12) << 2, G_TX_RENDERTILE,
                                     0, 0, 1 << 10, 1 << 10);
             }
+            if (controllerStyle) Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_C_UP, temp, 14);
         }
 
         sCUpTimer--;
@@ -6067,7 +6302,7 @@ void Interface_DrawItemButtons(PlayState* play) {
     gDPPipeSync(OVERLAY_DISP++);
 
     // Empty C Button Arrows
-    for (temp = EQUIP_SLOT_C_LEFT; temp <= EQUIP_SLOT_C_RIGHT; temp++) {
+    for (temp = EQUIP_SLOT_C_LEFT; !controllerStyle && temp <= EQUIP_SLOT_C_RIGHT; temp++) {
         if (GET_CUR_FORM_BTN_ITEM(temp) > 0xF0) {
             if (temp == EQUIP_SLOT_C_LEFT) {
                 gDPSetPrimColorOverride(OVERLAY_DISP++, 0, 0, 255, 240, 0, interfaceCtx->cLeftAlpha,
@@ -6158,7 +6393,17 @@ void Interface_Dpad_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
     HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
-    if (HudEditor_ShouldOverrideDraw()) {
+    if (ControllerHud_GetStyle() == CONTROLLER_HUD_RESTORATION) {
+        if (!HudEditor_IsActiveElementHidden()) {
+            const s16 size = 14;
+            s16 x, y;
+            Interface_RestorationDpadItemCenter(button, &x, &y);
+            const s16 left = x * 4 - size * 2;
+            const s16 top = y * 4 - size * 2;
+            gSPWideTextureRectangle(OVERLAY_DISP++, left, top, left + size * 4, top + size * 4,
+                                    G_TX_RENDERTILE, 0, 0, (32 << 10) / size, (32 << 10) / size);
+        }
+    } else if (HudEditor_ShouldOverrideDraw()) {
         if (CVarGetInteger(hudEditorElements[hudEditorActiveElement].modeCvar, HUD_EDITOR_ELEMENT_MODE_VANILLA) ==
             HUD_EDITOR_ELEMENT_MODE_HIDDEN) {
             hudEditorActiveElement = HUD_EDITOR_ELEMENT_NONE;
@@ -6171,6 +6416,16 @@ void Interface_Dpad_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16
             s16 dtdy = sDpadItemIconDD[button];
 
             HudEditor_ModifyDrawValues(&rectLeft, &rectTop, &rectWidth, &rectHeight, &dsdx, &dtdy);
+            if (ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER) {
+                // Grow the artwork around the slot center without moving the cross.
+                const s16 size = 16;
+                rectLeft -= (size - rectWidth) / 2;
+                rectTop -= (size - rectHeight) / 2;
+                if (button == EQUIP_SLOT_D_LEFT) rectLeft -= 2;
+                if (button == EQUIP_SLOT_D_DOWN) rectTop += 2;
+                rectWidth = rectHeight = size;
+                dsdx = dtdy = (32 << 9) / size;
+            }
 
             hudEditorActiveElement = HUD_EDITOR_ELEMENT_NONE;
 
@@ -6211,7 +6466,7 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
 
     OPEN_DISPS(play->state.gfxCtx);
 
-    i = ((void)0, DPAD_GET_CUR_FORM_BTN_ITEM(button));
+    i = ControllerHud_GetDpadItem(button);
 
     if ((i == ITEM_DEKU_STICK) || (i == ITEM_DEKU_NUT) || (i == ITEM_BOMB) || (i == ITEM_BOW) ||
         ((i >= ITEM_BOW_FIRE) && (i <= ITEM_BOW_LIGHT)) || (i == ITEM_BOMBCHU) || (i == ITEM_POWDER_KEG) ||
@@ -6255,17 +6510,29 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         if (!Interface_DrawTouchAmmo(play,7-button,i,ammo))
 #endif
         {
+        if (ControllerHud_GetStyle() == CONTROLLER_HUD_RESTORATION) {
+            HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
+            if (!HudEditor_IsActiveElementHidden()) {
+                s16 x, y;
+                Interface_RestorationDpadItemCenter(button, &x, &y);
+                Interface_DrawControllerAmmoDigits(play, x - 1, y + 3, i, ammo, 5);
+            }
+        } else {
+        const bool wind = ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER;
+        const s16 ammoX = sDpadItemAmmoX[button] - (wind && button == EQUIP_SLOT_D_LEFT ? 2 : 0);
+        const s16 ammoY = sDpadItemAmmoY[button] + (wind ? (button == EQUIP_SLOT_D_DOWN ? 7 : 4) : 0);
         // Draw upper digit (tens)
         if ((u32)i != 0) {
             HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
-            OVERLAY_DISP = Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[i], 8, 8, sDpadItemAmmoX[button],
-                                              sDpadItemAmmoY[button], 8, 8, 1 << 10, 1 << 10);
+            OVERLAY_DISP = Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[i], 8, 8, ammoX,
+                                              ammoY, 8, 8, 1 << 10, 1 << 10);
         }
 
         // Draw lower digit (ones)
         HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
-        OVERLAY_DISP = Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[ammo], 8, 8, sDpadItemAmmoX[button] + 6,
-                                          sDpadItemAmmoY[button], 8, 8, 1 << 10, 1 << 10);
+        OVERLAY_DISP = Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[ammo], 8, 8, ammoX + 6,
+                                          ammoY, 8, 8, 1 << 10, 1 << 10);
+        }
         }
     }
 
@@ -6292,7 +6559,36 @@ void Interface_DrawItemIconTexture(PlayState* play, TexturePtr texture, s16 butt
 
     // #region 2S2H [Cosmetic] Hud Editor
     HudEditor_SetActiveElement(button);
-    if (HudEditor_ShouldOverrideDraw()) {
+    if (ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER) {
+        s16 x, y;
+        if (!HudEditor_IsActiveElementHidden() && ControllerHud_GetAnchor(button, &x, &y)) {
+            const bool shoulder = button == EQUIP_SLOT_C_RIGHT;
+            const bool top = button == EQUIP_SLOT_C_DOWN;
+            const u8 item = GET_CUR_FORM_BTN_ITEM(button);
+            const bool sword = button == EQUIP_SLOT_B && GET_PLAYER(play)->transformation == PLAYER_FORM_HUMAN &&
+                               ((item >= ITEM_SWORD_KOKIRI && item <= ITEM_SWORD_GILDED) || item == ITEM_SWORD_GREAT_FAIRY);
+            const s16 size = 16;
+            // Centers in quarter pixels. The sword overlaps the lower-right rim of B.
+            const s16 centerX = sword ? 38 : shoulder ? 18 : top ? 20 : 6;
+            const s16 centerY = sword ? 48 : shoulder ? 42 : top ? 12 : 18;
+            const s16 left = x * 4 + centerX - size * 2;
+            const s16 upper = y * 4 + centerY - size * 2;
+            gSPWideTextureRectangle(OVERLAY_DISP++, left, upper, left + size * 4, upper + size * 4,
+                                    G_TX_RENDERTILE, 0, 0, (32 << 10) / size, (32 << 10) / size);
+        }
+    } else if (ControllerHud_GetStyle() == CONTROLLER_HUD_RESTORATION) {
+        s16 x, y;
+        if (!HudEditor_IsActiveElementHidden() && ControllerHud_GetAnchor(button, &x, &y)) {
+            const bool shoulder = button == EQUIP_SLOT_C_RIGHT;
+            const s16 size = shoulder ? 15 : CONTROLLER_HUD_RESTORATION_PLATE_SIZE;
+            if (shoulder) {
+                x += (CONTROLLER_HUD_RESTORATION_ZR_WIDTH - size) / 2;
+                y -= 7;
+            }
+            gSPWideTextureRectangle(OVERLAY_DISP++, x * 4, y * 4, (x + size) * 4, (y + size) * 4,
+                                    G_TX_RENDERTILE, 0, 0, (32 << 10) / size, (32 << 10) / size);
+        }
+    } else if (HudEditor_ShouldOverrideDraw()) {
         if (CVarGetInteger(hudEditorElements[hudEditorActiveElement].modeCvar, HUD_EDITOR_ELEMENT_MODE_VANILLA) ==
             HUD_EDITOR_ELEMENT_MODE_HIDDEN) {
             hudEditorActiveElement = HUD_EDITOR_ELEMENT_NONE;
@@ -6389,6 +6685,17 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         if (!Interface_DrawTouchAmmo(play,button,i,ammo))
 #endif
         {
+        s16 x, y;
+        HudEditor_SetActiveElement(button);
+        const int style = ControllerHud_GetStyle();
+        if (style && ControllerHud_GetAnchor(button, &x, &y)) {
+            if (!HudEditor_IsActiveElementHidden()) {
+                const bool wind = style == CONTROLLER_HUD_WIND_WAKER;
+                const s16 offsetX = wind ? -7 : 7;
+                const s16 offsetY = wind ? 10 : button == EQUIP_SLOT_C_RIGHT ? 2 : 11;
+                Interface_DrawControllerAmmoDigits(play, x + offsetX, y + offsetY, i, ammo, wind ? 6 : 5);
+            }
+        } else {
         // Draw upper digit (tens)
         if ((u32)i != 0) {
             HudEditor_SetActiveElement(button);
@@ -6403,6 +6710,7 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         OVERLAY_DISP =
             Gfx_DrawTexRectIA8(OVERLAY_DISP, gAmmoDigitTextures[ammo], 8, 8, sAmmoDigitsXPositions[button] + 6,
                                sAmmoDigitsYPositions[button], 8, 8, 1 << 10, 1 << 10);
+        }
         }
     }
 
@@ -6491,6 +6799,9 @@ void Interface_DrawBButtonIcons(PlayState* play) {
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
 #endif
+        if (Interface_DrawRestorationAction(play, HUD_EDITOR_ELEMENT_B,
+                                            interfaceCtx->doActionSegment[DO_ACTION_SEG_B].mainTex,
+                                            interfaceCtx->bAlpha)) goto bActionDrawn;
         sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
 
         // #region 2S2H [Cosmetic] Hud Editor
@@ -6509,6 +6820,16 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                 s16 dtdy = sBButtonDoActionTextureScale >> 1;
 
                 HudEditor_ModifyDrawValues(&rectLeft, &rectTop, &rectWidth, &rectHeight, &dsdx, &dtdy);
+                if (ControllerHud_GetStyle() != CONTROLLER_HUD_ORIGINAL) {
+                    const bool wind = ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER;
+                    ControllerHud_GetAnchor(HUD_EDITOR_ELEMENT_B, &rectLeft, &rectTop);
+                    rectWidth = wind ? 32 : 28;
+                    rectHeight = wind ? 8 : 7;
+                    rectLeft += (Interface_ControllerPlateSize(HUD_EDITOR_ELEMENT_B, wind) - rectWidth) / 2;
+                    rectTop += wind ? Interface_ControllerPlateSize(HUD_EDITOR_ELEMENT_B, true) - 6 : 4;
+                    dsdx = (DO_ACTION_TEX_WIDTH << 9) / rectWidth;
+                    dtdy = (DO_ACTION_TEX_HEIGHT << 9) / rectHeight;
+                }
 
                 hudEditorActiveElement = HUD_EDITOR_ELEMENT_NONE;
 
@@ -6540,6 +6861,9 @@ void Interface_DrawBButtonIcons(PlayState* play) {
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
         if (Interface_DrawTouchBAction(play)) goto bActionDrawn;
 #endif
+        if (Interface_DrawRestorationAction(play, HUD_EDITOR_ELEMENT_B,
+                                            interfaceCtx->doActionSegment[DO_ACTION_SEG_B].subTex,
+                                            interfaceCtx->bAlpha)) goto bActionDrawn;
         sBButtonDoActionTextureScale = 1024.0f / (sBButtonDoActionTextureScales[gSaveContext.options.language] / 100.0f);
 
         // #region 2S2H [Cosmetic] Hud Editor
@@ -6558,6 +6882,16 @@ void Interface_DrawBButtonIcons(PlayState* play) {
                 s16 dtdy = sBButtonDoActionTextureScale >> 1;
 
                 HudEditor_ModifyDrawValues(&rectLeft, &rectTop, &rectWidth, &rectHeight, &dsdx, &dtdy);
+                if (ControllerHud_GetStyle() != CONTROLLER_HUD_ORIGINAL) {
+                    const bool wind = ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER;
+                    ControllerHud_GetAnchor(HUD_EDITOR_ELEMENT_B, &rectLeft, &rectTop);
+                    rectWidth = wind ? 32 : 28;
+                    rectHeight = wind ? 8 : 7;
+                    rectLeft += (Interface_ControllerPlateSize(HUD_EDITOR_ELEMENT_B, wind) - rectWidth) / 2;
+                    rectTop += wind ? Interface_ControllerPlateSize(HUD_EDITOR_ELEMENT_B, true) - 6 : 4;
+                    dsdx = (DO_ACTION_TEX_WIDTH << 9) / rectWidth;
+                    dtdy = (DO_ACTION_TEX_HEIGHT << 9) / rectHeight;
+                }
 
                 hudEditorActiveElement = HUD_EDITOR_ELEMENT_NONE;
 
@@ -6574,9 +6908,7 @@ void Interface_DrawBButtonIcons(PlayState* play) {
         }
     }
 
-#if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
 bActionDrawn:
-#endif
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -6639,11 +6971,36 @@ void Interface_DrawDButtonIcons(PlayState* play) {
     gDPPipeSync(OVERLAY_DISP++);
 
     // D-Right Button Icon & Ammo Count
-    if (DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_RIGHT) < ITEM_F0) {
+    const int rightItem = ControllerHud_GetDpadItem(EQUIP_SLOT_D_RIGHT);
+    if (Interface_RestorationTatlPromptActive(play)) {
+        s16 x, y;
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
+        if (!HudEditor_IsActiveElementHidden()) {
+            Interface_RestorationDpadItemCenter(EQUIP_SLOT_D_RIGHT, &x, &y);
+            Interface_DrawControllerTexture(play, ControllerHud_GetArt(CONTROLLER_HUD_RESTORATION, "Tatl-Fairy"),
+                                            x - 7, y - 7, 14, interfaceCtx->aAlpha);
+            Interface_DrawControllerTextureRect(play, ControllerHud_GetArt(CONTROLLER_HUD_RESTORATION, "Tatl-Label"),
+                                                x + 9, y - 4, 13, 7, interfaceCtx->aAlpha);
+        }
+    } else if (rightItem < ITEM_F0) {
         gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, dpadInterfaceCtx->dRightAlpha);
         gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
-        Interface_Dpad_DrawItemIconTexture(play, interfaceCtx->iconItemSegment[EQUIP_SLOT_D_RIGHT + EQUIP_SLOT_MAX],
-                                           EQUIP_SLOT_D_RIGHT);
+        const bool restorationInstrument = ControllerHud_GetStyle() == CONTROLLER_HUD_RESTORATION &&
+                                           rightItem == ITEM_OCARINA_OF_TIME;
+        const char* instrument = restorationInstrument ?
+            ControllerHud_GetRestorationInstrumentArt(GET_PLAYER(play)->transformation) : NULL;
+        if (instrument != NULL) {
+            HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_D_PAD);
+            if (!HudEditor_IsActiveElementHidden()) {
+                s16 x, y;
+                Interface_RestorationDpadItemCenter(EQUIP_SLOT_D_RIGHT, &x, &y);
+                Interface_DrawControllerTexture(play, instrument, x - 7, y - 7, 14, dpadInterfaceCtx->dRightAlpha);
+            }
+        } else {
+            TexturePtr icon = restorationInstrument ? (TexturePtr)gItemIcons[ITEM_OCARINA_OF_TIME]
+                : interfaceCtx->iconItemSegment[EQUIP_SLOT_D_RIGHT + EQUIP_SLOT_MAX];
+            Interface_Dpad_DrawItemIconTexture(play, icon, EQUIP_SLOT_D_RIGHT);
+        }
         gDPPipeSync(OVERLAY_DISP++);
         gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0,
                           PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
@@ -6723,6 +7080,36 @@ void Interface_DrawAButton(PlayState* play) {
         return;
     }
 #endif
+    int style = ControllerHud_GetStyle();
+    if (style) {
+        s16 x, y;
+        ControllerHud_GetAnchor(HUD_EDITOR_ELEMENT_A, &x, &y);
+        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_A);
+        if (HudEditor_IsActiveElementHidden()) return;
+        Interface_DrawControllerButton(play, HUD_EDITOR_ELEMENT_A, interfaceCtx->aAlpha, style);
+
+        TexturePtr tex = (interfaceCtx->aButtonState <= A_BTN_STATE_CHANGE_1_UNPAUSED ||
+                          interfaceCtx->aButtonState == A_BTN_STATE_CHANGE_1_PAUSED)
+                             ? interfaceCtx->doActionSegment[DO_ACTION_SEG_A].mainTex
+                             : interfaceCtx->doActionSegment[DO_ACTION_SEG_A].subTex;
+        if (Interface_DrawRestorationAction(play, HUD_EDITOR_ELEMENT_A, tex, interfaceCtx->aAlpha)) return;
+        const bool wind = style == CONTROLLER_HUD_WIND_WAKER;
+        const s16 width = wind ? 32 : 28;
+        const s16 height = wind ? 8 : 7;
+        x += (Interface_ControllerPlateSize(HUD_EDITOR_ELEMENT_A, wind) - width) / 2;
+        y += wind ? 10 : 4;
+        OPEN_DISPS(play->state.gfxCtx);
+        Gfx_SetupDL39_Overlay(play->state.gfxCtx);
+        gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->aAlpha);
+        gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+        gDPLoadTextureBlock_4b(OVERLAY_DISP++, tex, G_IM_FMT_IA, DO_ACTION_TEX_WIDTH, DO_ACTION_TEX_HEIGHT, 0,
+                               G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0);
+        gSPWideTextureRectangle(OVERLAY_DISP++, x * 4, y * 4, (x + width) * 4, (y + height) * 4, G_TX_RENDERTILE, 0,
+                                0, 1024 * DO_ACTION_TEX_WIDTH / width, 1024 * DO_ACTION_TEX_HEIGHT / height);
+        CLOSE_DISPS(play->state.gfxCtx);
+        return;
+    }
+
     OPEN_DISPS(play->state.gfxCtx);
     aAlpha = interfaceCtx->aAlpha;
 
@@ -9436,6 +9823,10 @@ void Interface_Draw(PlayState* play) {
         Gfx_SetupDL39_Overlay(play->state.gfxCtx);
 
         Interface_DrawItemButtons(play);
+        const int controllerStyle = ControllerHud_GetStyle();
+        if (controllerStyle == CONTROLLER_HUD_RESTORATION) {
+            Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_C_RIGHT, interfaceCtx->cRightAlpha, 16);
+        }
 
         if (player->transformation == GET_PLAYER_FORM) {
             Interface_DrawBButtonIcons(play);
@@ -9443,7 +9834,7 @@ void Interface_Draw(PlayState* play) {
         Interface_DrawCButtonIcons(play);
 
         // #region 2S2H [Dpad]
-        if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+        if (ControllerHud_DpadEquipsEnabled()) {
             Interface_DrawDButtonIcons(play);
         }
         // #endregion
@@ -9451,6 +9842,16 @@ void Interface_Draw(PlayState* play) {
         Interface_DrawAButton(play);
 
         Interface_DrawPauseMenuEquippingIcons(play);
+
+        if (controllerStyle) {
+            Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_A, interfaceCtx->aAlpha, 5);
+            Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_B, interfaceCtx->bAlpha, 16);
+            Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_C_LEFT, interfaceCtx->cLeftAlpha, 16);
+            Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_C_DOWN, interfaceCtx->cDownAlpha, 16);
+            if (controllerStyle != CONTROLLER_HUD_RESTORATION) {
+                Interface_DrawControllerLabel(play, HUD_EDITOR_ELEMENT_C_RIGHT, interfaceCtx->cRightAlpha, 16);
+            }
+        }
 
         // Draw either the minigame countdown or the three-day clock
         if (!IS_PAUSED(&play->pauseCtx)) {
@@ -10221,7 +10622,7 @@ void Interface_Init(PlayState* play) {
     }
 
     // #region 2S2H [Dpad]
-    if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
+    if (ControllerHud_DpadEquipsEnabled()) {
         if (DPAD_BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_D_RIGHT) < ITEM_F0) {
             Interface_Dpad_LoadItemIconImpl(play, EQUIP_SLOT_D_RIGHT);
         }

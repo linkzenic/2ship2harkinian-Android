@@ -1,17 +1,27 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stddef.h>
+#include <string>
+#include <vector>
+#include "CloudSyncPolicy.h"
 
-// Downloads newer iCloud saves before the file-select screen reads them, and
-// uploads local saves that are newer than their cloud copies.
-void TwoShipICloudSync_PrepareSaves(void);
+bool TwoShipICloudSync_Enabled();
+void TwoShipICloudSync_SetEnabled(bool enabled);
+unsigned TwoShipICloudSync_Selection();
+bool TwoShipICloudSync_CategoryEnabled(TwoShipCloud::Category category);
+void TwoShipICloudSync_SetCategoryEnabled(TwoShipCloud::Category category, bool enabled);
+void TwoShipICloudSync_ApplyAtLaunch();
+void TwoShipICloudSync_Start();
+void TwoShipICloudSync_SyncNow();
+void TwoShipICloudSync_GetStatus(char* buffer, size_t bufferSize);
 
-// Queues a reconciliation after a save is committed or deleted.
-void TwoShipICloudSync_LocalSaveChanged(const char* path);
-void TwoShipICloudSync_LocalSaveDeleted(const char* path);
+struct TwoShipCloudConflict {
+    std::string path;
+    std::string revision;
+    bool canKeepLocal;
+    bool canUseCloud;
+    bool queued;
+};
 
-#ifdef __cplusplus
-}
-#endif
+std::vector<TwoShipCloudConflict> TwoShipICloudSync_GetConflicts();
+bool TwoShipICloudSync_ChooseConflict(const std::string& path, const std::string& revision, bool useCloud);

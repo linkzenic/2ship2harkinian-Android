@@ -13,6 +13,9 @@ int main() {
     assert(Fast::TextureBudgetBytes(16 * GiB, 128) == 128 * MiB);
     assert(Fast::TextureBudgetBytes(16 * GiB, 1) == 64 * MiB);
     assert(Fast::TextureBudgetBytes(16 * GiB, 4096) == 512 * MiB);
+    assert(Fast::TVOSTextureBudgetBytes(0) == 32 * MiB);
+    assert(Fast::TVOSTextureBudgetBytes(256 * MiB) == 64 * MiB);
+    assert(Fast::TVOSTextureBudgetBytes(2 * GiB) == 128 * MiB);
     assert(Fast::TextureStorageBytes(1024, 1024) == 4 * MiB);
     assert(Fast::TextureStorageBytes(8192, 8192) == 256 * MiB);
     assert(!Fast::TextureCanBeEvicted(10, 10, false));

@@ -3,8 +3,10 @@ def buildAsApplication = !buildAsLibrary
 def repoRoot = rootProject.projectDir.parentFile
 def androidVcpkgRoot = System.getenv("VCPKG_ROOT") ?: new File(repoRoot, "build/vcpkg").absolutePath
 def androidVcpkgRootArg = androidVcpkgRoot.replace('\\', '/')
-def androidAppVersionCode = 5001040
-def androidAppVersionName = "5.0.1-android.4"
+def portRelease = new Properties()
+new File(repoRoot, "ports-release.properties").withInputStream { portRelease.load(it) }
+def androidAppVersionCode = portRelease.getProperty('ANDROID_VERSION_CODE').toInteger()
+def androidAppVersionName = "${portRelease.getProperty('PORTS_VERSION')}.ports.${portRelease.getProperty('PORTS_REVISION')}"
 if (buildAsApplication) {
     apply plugin: 'com.android.application'
 }

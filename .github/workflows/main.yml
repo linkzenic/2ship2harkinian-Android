@@ -7,6 +7,7 @@ on:
       - platform-integration
     tags-ignore:
       - "v*-android.*"
+      - "v*.ports.*"
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

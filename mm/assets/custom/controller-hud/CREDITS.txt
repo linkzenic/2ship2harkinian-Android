@@ -1,0 +1,10 @@
+Controller HUD artwork
+
+Project Restoration preset: HD HUD artwork by the Project Restoration team.
+https://restoration.zora.re/hd-hud
+
+Project Restoration ZR plate: adapted from the ReMasked in-game HUD.
+
+Wind Waker HD preset: button artwork by Hyrule Hysteria, from WWHD HUD and
+Gameplay for GameCube, included with the creator's permission.
+https://gamebanana.com/mods/715287

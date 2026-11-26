@@ -65,7 +65,8 @@ static bool IntegratedTouchCorners() {
 #endif
 }
 extern "C" bool HudEditor_ShouldOverrideDraw() {
-    if (IntegratedTouchCorners()) return true;
+    s16 x, y;
+    if (ControllerHud_GetAnchor(hudEditorActiveElement, &x, &y) || IntegratedTouchCorners()) return true;
     return hudEditorActiveElement != HUD_EDITOR_ELEMENT_NONE &&
            (hudEditorOverrideNextElemMode != HUD_EDITOR_ELEMENT_MODE_NONE
                 ? hudEditorOverrideNextElemMode
@@ -91,6 +92,8 @@ static f32 HudEditor_GetGlobalScale() {
 }
 
 extern "C" f32 HudEditor_GetActiveElementScale() {
+    s16 x, y;
+    if (ControllerHud_GetAnchor(hudEditorActiveElement, &x, &y)) return ControllerHud_GetScale(hudEditorActiveElement);
     return hudEditorActiveElement != HUD_EDITOR_ELEMENT_NONE &&
                    hudEditorOverrideNextElemMode == HUD_EDITOR_ELEMENT_MODE_NONE
                ? CVarGetFloat(hudEditorElements[hudEditorActiveElement].scaleCvar, 1.0f) * HudEditor_GetGlobalScale()
@@ -113,6 +116,20 @@ void HudEditor_ModifyRectPosValuesFloat(f32* rectLeft, f32* rectTop) {
     f32 offsetFromBaseX = *rectLeft - hudEditorElements[hudEditorActiveElement].defaultX;
     f32 offsetFromBaseY = *rectTop - hudEditorElements[hudEditorActiveElement].defaultY;
     f32 scale = HudEditor_GetActiveElementScale();
+    s16 controllerX, controllerY;
+    if (ControllerHud_GetAnchor(hudEditorActiveElement, &controllerX, &controllerY)) {
+        if (hudEditorActiveElement == HUD_EDITOR_ELEMENT_D_PAD) {
+            // Space the item and count anchors around the center of the cross.
+            const bool wind = ControllerHud_GetStyle() == CONTROLLER_HUD_WIND_WAKER;
+            const float center = wind ? 3.4f : 8.f;
+            const float spacing = wind ? 1.43f : .75f;
+            offsetFromBaseX = center + (offsetFromBaseX - 8.f) * spacing;
+            offsetFromBaseY = center + (offsetFromBaseY - 8.f) * spacing;
+        }
+        *rectLeft = controllerX + offsetFromBaseX * scale;
+        *rectTop = controllerY + offsetFromBaseY * scale;
+        return;
+    }
 
     if (IntegratedTouchCorners()) {
 #if defined(__ANDROID__) || (defined(__IOS__) && !defined(__TVOS__))
@@ -247,11 +264,11 @@ const char* modeNames[] = {
 };
 
 const char* presetNames[] = {
+    "Current layout",
     "Vanilla (4:3)",
     "Hidden",
     "Widescreen",
     "OoT Layout",
-    "Pro Controller Layout",
     "HUD Preset 1",
     "HUD Preset 2",
     "HUD Preset 3",
@@ -466,11 +483,11 @@ static bool HudEditor_ApplyLayoutPreset(const std::filesystem::path& presetPath,
 
 namespace HudEditor {
 enum Presets {
+    CURRENT,
     VANILLA,
     HIDDEN,
     WIDESCREEN,
     OCARINA_OF_TIME,
-    PRO_CONTROLLER,
     HUD_PRESET_1,
     HUD_PRESET_2,
     HUD_PRESET_3,
@@ -478,10 +495,11 @@ enum Presets {
 };
 
 void HudEditorWindow::DrawElement() {
-    static HudEditor::Presets preset = HudEditor::Presets::VANILLA;
+    // Layouts are applied once; the editor always shows the live settings.
+    HudEditor::Presets preset = HudEditor::Presets::CURRENT;
     static std::string presetStatusMessage;
 
-    if (UIWidgets::Combobox("Preset", &preset, presetNames)) {
+    if (UIWidgets::Combobox("HUD Layout", &preset, presetNames) && preset != HudEditor::Presets::CURRENT) {
         bool loadingSlotPreset = preset >= HudEditor::Presets::HUD_PRESET_1 && preset <= HudEditor::Presets::HUD_PRESET_3;
 
         if (!loadingSlotPreset) {
@@ -503,6 +521,7 @@ void HudEditorWindow::DrawElement() {
         }
 
         switch (preset) {
+            case HudEditor::Presets::CURRENT:
             case HudEditor::Presets::VANILLA: {
                 break;
             }
@@ -577,46 +596,6 @@ void HudEditorWindow::DrawElement() {
                 HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_MAGIC_METER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 18,
                                            42, 1.0f);
                 HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_TIMERS, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 26, 56,
-                                           1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_TIMERS_MOON_CRASH, HUD_EDITOR_ELEMENT_MODE_MOVABLE_43,
-                                           115, 200, 1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_MINIGAME_COUNTER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT,
-                                           20, 67, 1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_RUPEE_COUNTER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 26,
-                                           206, 1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_KEY_COUNTER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 26,
-                                           190, 1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_SKULLTULA_COUNTER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT,
-                                           26, 190, 1.0f);
-                break;
-            }
-            case HudEditor::Presets::PRO_CONTROLLER: {
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_C_UP, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 269, 18,
-                                           0.66f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_C_LEFT, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 256, 44,
-                                           0.66f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_C_RIGHT, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 293, 20,
-                                           0.66f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_C_DOWN, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 287, 48,
-                                           0.66f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_A, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 286, 76,
-                                           0.72f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_B, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 252, 76,
-                                           0.72f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_D_PAD, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 298, 108,
-                                           0.66f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_MINIMAP, HUD_EDITOR_ELEMENT_MODE_MOVABLE_RIGHT, 294, 220,
-                                           1.0f);
-                HudEditor_SetElementHidden(HUD_EDITOR_ELEMENT_START);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_CARROT, HUD_EDITOR_ELEMENT_MODE_MOVABLE_43, 160, 64,
-                                           1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_CLOCK, HUD_EDITOR_ELEMENT_MODE_MOVABLE_43, 160, 206,
-                                           1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_HEARTS, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 30, 26,
-                                           1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_MAGIC_METER, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 18,
-                                           34, 1.0f);
-                HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_TIMERS, HUD_EDITOR_ELEMENT_MODE_MOVABLE_LEFT, 26, 46,
                                            1.0f);
                 HudEditor_SetElementLayout(HUD_EDITOR_ELEMENT_TIMERS_MOON_CRASH, HUD_EDITOR_ELEMENT_MODE_MOVABLE_43,
                                            115, 200, 1.0f);

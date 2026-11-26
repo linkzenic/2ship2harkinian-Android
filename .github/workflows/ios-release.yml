@@ -17,8 +17,6 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 120
     env:
-      TWO_SHIP_IOS_VERSION: 5.0.1
-      TWO_SHIP_IOS_BUILD_NUMBER: 6
       DEPLOYMENT_TARGET: '15.0'
 
     steps:
